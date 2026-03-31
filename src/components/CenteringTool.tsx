@@ -55,14 +55,32 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
     setDragging(side);
   };
 
+  const handleTouchStart = (side: string) => (e: React.TouchEvent) => {
+    if (e.touches.length > 0 && containerRef.current) {
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
+      const y = ((e.touches[0].clientY - rect.top) / rect.height) * 100;
+      
+      let zX = x;
+      let zY = y;
+      if (side === 'left') zX = 0;
+      if (side === 'right') zX = 100;
+      if (side === 'top') zY = 0;
+      if (side === 'bottom') zY = 100;
+      
+      setZoomOrigin({ x: zX, y: zY });
+      setDragging(side);
+    }
+  };
+
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const onMove = (clientX: number, clientY: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    setMousePos({ x: e.clientX, y: e.clientY });
+    const x = (clientX - rect.left) / rect.width;
+    const y = (clientY - rect.top) / rect.height;
+    setMousePos({ x: clientX, y: clientY });
 
     if (!dragging) return;
 
@@ -98,7 +116,21 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
     onRatiosChange(lrRatio, tbRatio);
   };
 
+  const handleMouseMove = (e: React.MouseEvent) => {
+    onMove(e.clientX, e.clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      if (dragging) {
+        e.preventDefault(); // Prevent scroll while dragging
+      }
+      onMove(e.touches[0].clientX, e.touches[0].clientY);
+    }
+  };
+
   const handleMouseUp = () => setDragging(null);
+  const handleTouchEnd = () => setDragging(null);
 
   const isNear = (val: number, current: number, isX: boolean) => {
     if (!containerRef.current) return false;
@@ -126,18 +158,20 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
     <div className="relative h-full w-full flex items-center justify-center overflow-hidden rounded-[18px]">
       <div 
         ref={containerRef}
-        className="relative h-fit w-fit max-w-full max-h-full aspect-[2.5/3.5] rounded-[18px] overflow-visible select-none cursor-default transition-transform duration-200 bg-white"
+        className="relative h-fit w-fit max-w-full max-h-full aspect-[2.5/3.5] rounded-[18px] overflow-visible select-none cursor-default transition-transform duration-200"
         style={{
           transform: dragging ? 'scale(2)' : 'scale(1)',
           transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
         }}
         onMouseMove={handleMouseMove}
+        onTouchMove={handleTouchMove}
         onMouseUp={handleMouseUp}
+        onTouchEnd={handleTouchEnd}
         onMouseLeave={handleMouseUp}
       >
         <img 
           src={image} 
-          className="max-w-full max-h-full block rounded-[18px] pointer-events-none bg-white" 
+          className="max-w-full max-h-full block rounded-[18px] pointer-events-none" 
           alt="Flattened card" 
           style={{
             filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none'
@@ -159,6 +193,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
             <div 
               key={side}
               onMouseDown={handleMouseDown(side)}
+              onTouchStart={handleTouchStart(side)}
               className={cn(
                 "absolute cursor-pointer group",
                 isVertical ? "top-0 bottom-0 w-4 -ml-2" : "left-0 right-0 h-4 -mt-2"

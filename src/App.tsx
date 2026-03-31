@@ -238,9 +238,9 @@ export default function App() {
                 className="space-y-6"
               >
                 {/* Tools Row */}
-                <div className="flex flex-col md:flex-row gap-8 items-center md:items-stretch justify-center h-[50vh] md:h-[75vh] min-h-[500px] max-h-[900px]">
+                <div className="flex flex-col md:flex-row gap-8 items-center md:items-stretch justify-center md:h-[75vh] md:min-h-[500px] md:max-h-[900px]">
                   {/* Corner Selector */}
-                  <div className="flex-1 min-w-0 flex flex-col space-y-2">
+                  <div className="w-full md:flex-1 min-w-0 flex flex-col space-y-2">
                     <div className="flex items-center justify-between">
                       <h3 className="text-[10px] font-bold uppercase tracking-widest">
                         <span className="text-[#e6bbd4]">1.</span> <span className="text-white/60">Corners</span>
@@ -300,7 +300,7 @@ export default function App() {
                     />
                   </div>
 
-                    <div className="flex-1 min-w-0 flex flex-col space-y-2">
+                    <div className="w-full md:flex-1 min-w-0 flex flex-col space-y-2">
                       <div className="flex items-center justify-between">
                         <h3 className="text-[10px] font-bold uppercase tracking-widest">
                           <span className="text-[#e6bbd4]">2.</span> <span className="text-white/60">Centering</span>

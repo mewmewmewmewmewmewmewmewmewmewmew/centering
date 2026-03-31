@@ -23,12 +23,17 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
     };
   }, [image]);
 
+  const [isMobile, setIsMobile] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const cornersRef = useRef(corners);
   const rectRef = useRef<DOMRect | null>(null);
   const startDragPos = useRef({ x: 0, y: 0 });
   const startCorners = useRef<Point[]>([]);
+
+  useEffect(() => {
+    setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+  }, []);
 
   useEffect(() => {
     cornersRef.current = corners;
@@ -45,7 +50,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
       rectRef.current = containerRef.current.getBoundingClientRect();
     }
 
-    const onWindowMouseMove = (e: MouseEvent) => {
+    const onMove = (clientX: number, clientY: number) => {
       if (!rectRef.current) return;
       const rect = rectRef.current;
       
@@ -55,8 +60,8 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
         const offsetY = draggingIdx === 0 || draggingIdx === 1 ? 16 : -16;
 
         // Calculate pixel position relative to container
-        const targetPxX = e.clientX - rect.left - offsetX;
-        const targetPxY = e.clientY - rect.top - offsetY;
+        const targetPxX = clientX - rect.left - offsetX;
+        const targetPxY = clientY - rect.top - offsetY;
 
         const x = Math.max(0, Math.min(1, targetPxX / rect.width));
         const y = Math.max(0, Math.min(1, targetPxY / rect.height));
@@ -68,8 +73,8 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
         const isHorizontalDrag = draggingLine === 'left' || draggingLine === 'right';
         const isVerticalDrag = draggingLine === 'top' || draggingLine === 'bottom';
         
-        const dx = isHorizontalDrag ? (e.clientX - startDragPos.current.x) / rect.width : 0;
-        const dy = isVerticalDrag ? (e.clientY - startDragPos.current.y) / rect.height : 0;
+        const dx = isHorizontalDrag ? (clientX - startDragPos.current.x) / rect.width : 0;
+        const dy = isVerticalDrag ? (clientY - startDragPos.current.y) / rect.height : 0;
         
         const newCorners = [...startCorners.current];
         const indices = draggingLine === 'top' ? [0, 1] : 
@@ -85,19 +90,40 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
         onCornersChange(newCorners);
       }
       
-      setMousePos({ x: e.clientX, y: e.clientY });
+      setMousePos({ x: clientX, y: clientY });
     };
 
-    const onWindowMouseUp = () => {
+    const onWindowMouseMove = (e: MouseEvent) => {
+      onMove(e.clientX, e.clientY);
+    };
+
+    const onWindowTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        // Prevent scrolling while dragging
+        if (draggingIdx !== null || draggingLine !== null) {
+          e.preventDefault();
+        }
+        onMove(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    const onWindowEnd = () => {
       setDraggingIdx(null);
       setDraggingLine(null);
     };
 
     window.addEventListener('mousemove', onWindowMouseMove, { passive: true });
-    window.addEventListener('mouseup', onWindowMouseUp);
+    window.addEventListener('mouseup', onWindowEnd);
+    window.addEventListener('touchmove', onWindowTouchMove, { passive: false });
+    window.addEventListener('touchend', onWindowEnd);
+    window.addEventListener('touchcancel', onWindowEnd);
+
     return () => {
       window.removeEventListener('mousemove', onWindowMouseMove);
-      window.removeEventListener('mouseup', onWindowMouseUp);
+      window.removeEventListener('mouseup', onWindowEnd);
+      window.removeEventListener('touchmove', onWindowTouchMove);
+      window.removeEventListener('touchend', onWindowEnd);
+      window.removeEventListener('touchcancel', onWindowEnd);
     };
   }, [draggingIdx, draggingLine, onCornersChange]);
 
@@ -123,12 +149,28 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
     setMousePos({ x: e.clientX, y: e.clientY });
   };
 
+  const handleTouchStart = (idx: number) => (e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      setDraggingIdx(idx);
+      setMousePos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    }
+  };
+
   const handleLineMouseDown = (side: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     setDraggingLine(side);
     startDragPos.current = { x: e.clientX, y: e.clientY };
     startCorners.current = [...corners];
     setMousePos({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleLineTouchStart = (side: string) => (e: React.TouchEvent) => {
+    if (e.touches.length > 0) {
+      setDraggingLine(side);
+      startDragPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      startCorners.current = [...corners];
+      setMousePos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -274,6 +316,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
             <div
               key={side}
               onMouseDown={handleLineMouseDown(side)}
+              onTouchStart={handleLineTouchStart(side)}
               onMouseEnter={() => setHoverLine(side)}
               onMouseLeave={() => setHoverLine(null)}
               className="absolute cursor-move z-10 pointer-events-auto"
@@ -302,6 +345,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
             <div
               key={i}
               onMouseDown={handleMouseDown(i)}
+              onTouchStart={handleTouchStart(i)}
               className={cn(
                 "absolute w-6 h-6 rounded-full border-2 border-red-600 shadow-xl cursor-grab active:cursor-grabbing pointer-events-auto flex items-center justify-center z-20 transition-transform hover:scale-110",
                 draggingIdx === i ? "bg-red-600 scale-125" : ""
@@ -323,22 +367,23 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
           <div 
             className="absolute pointer-events-none z-50 border-4 border-red-600 rounded-full overflow-hidden shadow-2xl bg-black box-content"
             style={{
-              width: '180px',
-              height: '180px',
-              left: `${Math.max(90, Math.min(containerSize.width - 90, corners[draggingIdx].x * containerSize.width))}px`,
-              top: `${Math.max(90, Math.min(containerSize.height - 90, (corners[draggingIdx].y * containerSize.height) - 120))}px`,
+              width: isMobile ? '140px' : '180px',
+              height: isMobile ? '140px' : '180px',
+              left: `${Math.max(isMobile ? 70 : 90, Math.min(containerSize.width - (isMobile ? 70 : 90), corners[draggingIdx].x * containerSize.width))}px`,
+              top: `${Math.max(isMobile ? 70 : 90, Math.min(containerSize.height - (isMobile ? 70 : 90), (corners[draggingIdx].y * containerSize.height) - (isMobile ? 100 : 120)))}px`,
               transform: 'translate(-50%, -50%)',
             }}
           >
             {(() => {
               const zoom = 4;
+              const magSize = isMobile ? 140 : 180;
               const focalX = corners[draggingIdx].x * containerSize.width;
               const focalY = corners[draggingIdx].y * containerSize.height;
 
               // Move the center of the zoom around the corner radius
               // We shift the sharp corner towards the edge of the magnifier to show more of the card's interior
-              const targetX = draggingIdx === 0 || draggingIdx === 3 ? 60 : 120;
-              const targetY = draggingIdx === 0 || draggingIdx === 1 ? 60 : 120;
+              const targetX = draggingIdx === 0 || draggingIdx === 3 ? (magSize / 3) : (magSize * 2 / 3);
+              const targetY = draggingIdx === 0 || draggingIdx === 1 ? (magSize / 3) : (magSize * 2 / 3);
 
               // Calculate angles for the two edges connected to this corner
               const neighbors = draggingIdx === 0 ? [1, 3] :
@@ -365,7 +410,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                     }}
                   />
                   
-                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 180 180">
+                  <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${magSize} ${magSize}`}>
                     <g transform={`translate(${targetX}, ${targetY}) scale(${zoom})`}>
                       {/* Perspective-aligned crosshair guides */}
                       <line 
