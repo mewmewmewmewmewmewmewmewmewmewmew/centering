@@ -4,3 +4,47 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
+
+@layer utilities {
+  .gloss-box {
+    @apply relative overflow-hidden;
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.04) 0%,
+      rgba(255, 255, 255, 0.01) 50%,
+      rgba(255, 255, 255, 0.02) 100%
+    );
+    box-shadow: 
+      inset 0 1px 1px 0 rgba(255,255,255,0.05),
+      0 10px 30px -10px rgba(0,0,0,0.4);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.03);
+  }
+
+  .gloss-box::before {
+    content: "";
+    @apply absolute inset-0 pointer-events-none;
+    background: linear-gradient(
+      110deg,
+      transparent 45%,
+      rgba(255, 255, 255, 0.01) 48%,
+      rgba(255, 255, 255, 0.04) 50%,
+      rgba(255, 255, 255, 0.01) 52%,
+      transparent 55%
+    );
+    opacity: 0.3;
+  }
+
+  /* Custom Slider Styling */
+  .custom-slider {
+    @apply appearance-none bg-white/10 rounded-full h-1 cursor-pointer transition-all;
+  }
+
+  .custom-slider::-webkit-slider-thumb {
+    @apply appearance-none w-[9px] h-4 bg-[#e6bbd4] rounded-[3px] shadow-[0_0_10px_rgba(230,187,212,0.2)] hover:scale-y-110 transition-transform;
+  }
+
+  .custom-slider::-moz-range-thumb {
+    @apply w-[9px] h-4 bg-[#e6bbd4] border-none rounded-[3px] shadow-[0_0_10px_rgba(230,187,212,0.2)] hover:scale-y-110 transition-transform;
+  }
+}

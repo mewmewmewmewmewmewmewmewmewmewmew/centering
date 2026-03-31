@@ -43,33 +43,37 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
 };
 
 function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, corners: Point[], targetWidth: number, targetHeight: number) {
-  // This is a simplified version of perspective transform using triangles
-  // It's not perfect but works for simple rectification
-  const src = corners.map(p => ({ x: p.x * img.width, y: p.y * img.height }));
-  
   // Clear canvas
   ctx.clearRect(0, 0, targetWidth, targetHeight);
 
-  // We'll use a more advanced approach if needed, but for now let's try to get the basic UI working.
-  // Actually, I'll use a CSS-based approach for the "interactive" part if canvas is too hard to implement manually.
-  // But the user wants to drag lines on the *flattened* card.
-  
-  // Let's use a simple triangulation approach for the canvas.
-  const subdivide = 1;
+  // Use a high-subdivision grid to approximate perspective transformation accurately.
+  // This fixes the issue where it only worked well along one diagonal axis.
+  const subdivide = 24;
   for (let y = 0; y < subdivide; y++) {
     for (let x = 0; x < subdivide; x++) {
-      const x1 = x / subdivide;
-      const y1 = y / subdivide;
-      const x2 = (x + 1) / subdivide;
-      const y2 = (y + 1) / subdivide;
+      const u1 = x / subdivide;
+      const v1 = y / subdivide;
+      const u2 = (x + 1) / subdivide;
+      const v2 = (y + 1) / subdivide;
 
-      const p1 = interpolate(corners, x1, y1);
-      const p2 = interpolate(corners, x2, y1);
-      const p3 = interpolate(corners, x2, y2);
-      const p4 = interpolate(corners, x1, y2);
+      const p1 = interpolate(corners, u1, v1);
+      const p2 = interpolate(corners, u2, v1);
+      const p3 = interpolate(corners, u2, v2);
+      const p4 = interpolate(corners, u1, v2);
 
-      drawTriangle(ctx, img, p1, p2, p4, {x: x1*targetWidth, y: y1*targetHeight}, {x: x2*targetWidth, y: y1*targetHeight}, {x: x1*targetWidth, y: y2*targetHeight});
-      drawTriangle(ctx, img, p2, p3, p4, {x: x2*targetWidth, y: y1*targetHeight}, {x: x2*targetWidth, y: y2*targetHeight}, {x: x1*targetWidth, y: y2*targetHeight});
+      // Triangle 1: Top-Left, Top-Right, Bottom-Left
+      drawTriangle(ctx, img, p1, p2, p4, 
+        {x: u1 * targetWidth, y: v1 * targetHeight}, 
+        {x: u2 * targetWidth, y: v1 * targetHeight}, 
+        {x: u1 * targetWidth, y: v2 * targetHeight}
+      );
+      
+      // Triangle 2: Top-Right, Bottom-Right, Bottom-Left
+      drawTriangle(ctx, img, p2, p3, p4, 
+        {x: u2 * targetWidth, y: v1 * targetHeight}, 
+        {x: u2 * targetWidth, y: v2 * targetHeight}, 
+        {x: u1 * targetWidth, y: v2 * targetHeight}
+      );
     }
   }
 }
@@ -98,6 +102,11 @@ function drawTriangle(ctx: CanvasRenderingContext2D, img: HTMLImageElement, s1: 
   const n5 = d3.x, n6 = d3.y;
 
   const det = m1 * (m4 - m6) - m2 * (m3 - m5) + (m3 * m6 - m4 * m5);
+  if (Math.abs(det) < 0.1) {
+    ctx.restore();
+    return;
+  }
+
   const a = (n1 * (m4 - m6) - m2 * (n3 - n5) + (n3 * m6 - m4 * n5)) / det;
   const b = (m1 * (n3 - n5) - n1 * (m3 - m5) + (m3 * n5 - n3 * m5)) / det;
   const c = (m1 * (m4 * n5 - n3 * m6) - m2 * (m3 * n5 - n3 * m5) + n1 * (m3 * m6 - m4 * m5)) / det;

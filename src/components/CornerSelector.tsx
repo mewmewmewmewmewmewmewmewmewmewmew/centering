@@ -184,7 +184,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
     <div className="relative flex flex-col items-center overflow-hidden p-0">
       <div 
         ref={containerRef}
-        className="relative bg-black/20 rounded-lg overflow-visible cursor-crosshair select-none shadow-2xl w-fit h-fit"
+        className="relative bg-black/20 rounded-lg overflow-visible cursor-crosshair select-none shadow-2xl w-fit h-fit gloss-box"
         onMouseMove={handleMouseMove}
         style={{
           aspectRatio: imgSize.width && imgSize.height ? `${imgSize.width} / ${imgSize.height}` : 'auto',
@@ -216,33 +216,33 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
           />
           {/* Crosshairs for each corner */}
           {corners.map((p, i) => {
+            const neighbors = i === 0 ? [1, 3] :
+                              i === 1 ? [0, 2] :
+                              i === 2 ? [1, 3] : [2, 0];
+            const p0 = corners[i];
+            const p1 = corners[neighbors[0]];
+            const p2 = corners[neighbors[1]];
+            const angle1 = Math.atan2((p1.y - p0.y) * containerSize.height, (p1.x - p0.x) * containerSize.width);
+            const angle2 = Math.atan2((p2.y - p0.y) * containerSize.height, (p2.x - p0.x) * containerSize.width);
+
             return (
               <g key={`cross-${i}`} transform={`translate(${p.x * containerSize.width}, ${p.y * containerSize.height})`}>
-                {/* Outer crosshair lines with offset */}
-                {i === 0 && ( // Top-Left
-                  <>
-                    <line x1="-30" y1="0" x2="-6" y2="0" className="stroke-white/50 stroke-[2]" />
-                    <line x1="0" y1="-30" x2="0" y2="-6" className="stroke-white/50 stroke-[2]" />
-                  </>
-                )}
-                {i === 1 && ( // Top-Right
-                  <>
-                    <line x1="6" y1="0" x2="30" y2="0" className="stroke-white/50 stroke-[2]" />
-                    <line x1="0" y1="-30" x2="0" y2="-6" className="stroke-white/50 stroke-[2]" />
-                  </>
-                )}
-                {i === 2 && ( // Bottom-Right
-                  <>
-                    <line x1="6" y1="0" x2="30" y2="0" className="stroke-white/50 stroke-[2]" />
-                    <line x1="0" y1="6" x2="0" y2="30" className="stroke-white/50 stroke-[2]" />
-                  </>
-                )}
-                {i === 3 && ( // Bottom-Left
-                  <>
-                    <line x1="-30" y1="0" x2="-6" y2="0" className="stroke-white/50 stroke-[2]" />
-                    <line x1="0" y1="6" x2="0" y2="30" className="stroke-white/50 stroke-[2]" />
-                  </>
-                )}
+                {/* Outer crosshair lines (extensions) matching perspective */}
+                <line 
+                  x1={Math.cos(angle1 + Math.PI) * 6} 
+                  y1={Math.sin(angle1 + Math.PI) * 6} 
+                  x2={Math.cos(angle1 + Math.PI) * 30} 
+                  y2={Math.sin(angle1 + Math.PI) * 30} 
+                  className="stroke-white/50 stroke-[2]" 
+                />
+                <line 
+                  x1={Math.cos(angle2 + Math.PI) * 6} 
+                  y1={Math.sin(angle2 + Math.PI) * 6} 
+                  x2={Math.cos(angle2 + Math.PI) * 30} 
+                  y2={Math.sin(angle2 + Math.PI) * 30} 
+                  className="stroke-white/50 stroke-[2]" 
+                />
+                
                 <circle cx="0" cy="0" r="2.5" className="fill-red-600" />
                 <path 
                   d={getCornerPath(i, r)} 
@@ -250,22 +250,8 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                   className="stroke-red-600 stroke-[4]" 
                 />
                 {/* Theoretical sharp corner lines following actual perspective */}
-                {(() => {
-                  const neighbors = i === 0 ? [1, 3] :
-                                    i === 1 ? [0, 2] :
-                                    i === 2 ? [1, 3] : [2, 0];
-                  const p0 = corners[i];
-                  const p1 = corners[neighbors[0]];
-                  const p2 = corners[neighbors[1]];
-                  const angle1 = Math.atan2((p1.y - p0.y) * containerSize.height, (p1.x - p0.x) * containerSize.width);
-                  const angle2 = Math.atan2((p2.y - p0.y) * containerSize.height, (p2.x - p0.x) * containerSize.width);
-                  return (
-                    <>
-                      <line x1={0} y1={0} x2={Math.cos(angle1) * 60} y2={Math.sin(angle1) * 60} className="stroke-red-600/30 stroke-[2]" />
-                      <line x1={0} y1={0} x2={Math.cos(angle2) * 60} y2={Math.sin(angle2) * 60} className="stroke-red-600/30 stroke-[2]" />
-                    </>
-                  );
-                })()}
+                <line x1={0} y1={0} x2={Math.cos(angle1) * 60} y2={Math.sin(angle1) * 60} className="stroke-red-600/30 stroke-[2]" />
+                <line x1={0} y1={0} x2={Math.cos(angle2) * 60} y2={Math.sin(angle2) * 60} className="stroke-red-600/30 stroke-[2]" />
               </g>
             );
           })}
@@ -381,8 +367,25 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                   
                   <svg className="absolute inset-0 w-full h-full" viewBox="0 0 180 180">
                     <g transform={`translate(${targetX}, ${targetY}) scale(${zoom})`}>
-                      <line x1="-30" y1="0" x2="30" y2="0" className="stroke-white/50" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
-                      <line x1="0" y1="-30" x2="0" y2="30" className="stroke-white/50" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
+                      {/* Perspective-aligned crosshair guides */}
+                      <line 
+                        x1={Math.cos(angle1 + Math.PI) * 30} 
+                        y1={Math.sin(angle1 + Math.PI) * 30} 
+                        x2={Math.cos(angle1) * 30} 
+                        y2={Math.sin(angle1) * 30} 
+                        className="stroke-white/50" 
+                        strokeWidth="0.5" 
+                        vectorEffect="non-scaling-stroke" 
+                      />
+                      <line 
+                        x1={Math.cos(angle2 + Math.PI) * 30} 
+                        y1={Math.sin(angle2 + Math.PI) * 30} 
+                        x2={Math.cos(angle2) * 30} 
+                        y2={Math.sin(angle2) * 30} 
+                        className="stroke-white/50" 
+                        strokeWidth="0.5" 
+                        vectorEffect="non-scaling-stroke" 
+                      />
                       <circle cx="0" cy="0" r="2" className="fill-red-600" />
                       
                       {/* Rounded corner guide */}

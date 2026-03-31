@@ -123,10 +123,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
     const tbRatio = (topHeight / tbTotal) * 100;
 
   return (
-    <div className="relative h-full w-full flex items-center justify-center overflow-visible rounded-lg">
+    <div className="relative h-full w-full flex items-center justify-center overflow-hidden rounded-[18px]">
       <div 
         ref={containerRef}
-        className="relative h-fit w-fit max-w-full max-h-full aspect-[2.5/3.5] rounded-lg overflow-visible select-none cursor-default transition-transform duration-200"
+        className="relative h-fit w-fit max-w-full max-h-full aspect-[2.5/3.5] rounded-[18px] overflow-visible select-none cursor-default transition-transform duration-200 bg-white"
         style={{
           transform: dragging ? 'scale(2)' : 'scale(1)',
           transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
@@ -137,7 +137,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
       >
         <img 
           src={image} 
-          className="max-w-full max-h-full block rounded-lg pointer-events-none" 
+          className="max-w-full max-h-full block rounded-[18px] pointer-events-none bg-white" 
           alt="Flattened card" 
           style={{
             filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none'
