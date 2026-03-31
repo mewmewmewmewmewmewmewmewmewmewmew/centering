@@ -19,54 +19,73 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
     if (!ctx) return;
 
     const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.src = image;
-    
-    img.onload = () => {
+    if (image.startsWith('http')) {
+      img.crossOrigin = "anonymous";
+    }
+
+    const processImage = () => {
       if (!active) return;
       
+      // Use a slightly smaller target for mobile to ensure compatibility
       const width = 800;
       const height = Math.round(width / CARD_RATIO);
       canvas.width = width;
       canvas.height = height;
 
-      // Ensure clean state
       ctx.fillStyle = 'black';
       ctx.fillRect(0, 0, width, height);
       
       try {
-        drawPerspective(ctx, img, corners, width, height);
+        // Use 12x12 subdivision (288 triangles) - very safe for mobile but still accurate
+        drawPerspective(ctx, img, corners, width, height, 12);
         
-        // Use requestAnimationFrame to ensure the drawing is flushed
-        requestAnimationFrame(() => {
+        setTimeout(() => {
           if (!active) return;
           try {
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
             onFlattened(dataUrl);
           } catch (e) {
-            console.error('Failed to export flattened image:', e);
+            console.error('Flattening export error:', e);
           }
-        });
+        }, 100);
       } catch (e) {
-        console.error('Perspective transform failed:', e);
+        console.error('Flattening transform error:', e);
       }
     };
+
+    img.onload = processImage;
+    img.onerror = (e) => console.error('Flattening image load error:', e);
+    img.src = image;
+
+    // Handle already loaded images (like data URLs)
+    if (img.complete) {
+      processImage();
+    }
 
     return () => {
       active = false;
     };
   }, [image, corners, onFlattened]);
 
-  return <canvas ref={canvasRef} className="hidden" />;
+  return (
+    <canvas 
+      ref={canvasRef} 
+      style={{ 
+        position: 'absolute', 
+        left: '-5000px', 
+        top: '-5000px',
+        width: '800px',
+        height: '1120px',
+        visibility: 'hidden',
+        pointerEvents: 'none'
+      }} 
+    />
+  );
 };
 
-function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, corners: Point[], targetWidth: number, targetHeight: number) {
-  // Clear canvas
+function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, corners: Point[], targetWidth: number, targetHeight: number, subdivide: number = 16) {
   ctx.clearRect(0, 0, targetWidth, targetHeight);
 
-  // Use a moderate subdivision grid to approximate perspective transformation accurately.
-  // 16x16 is a good balance between accuracy and performance (especially for mobile).
-  const subdivide = 16;
   for (let y = 0; y < subdivide; y++) {
     for (let x = 0; x < subdivide; x++) {
       const u1 = x / subdivide;
@@ -79,14 +98,12 @@ function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, c
       const p3 = interpolate(corners, u2, v2);
       const p4 = interpolate(corners, u1, v2);
 
-      // Triangle 1: Top-Left, Top-Right, Bottom-Left
       drawTriangle(ctx, img, p1, p2, p4, 
         {x: u1 * targetWidth, y: v1 * targetHeight}, 
         {x: u2 * targetWidth, y: v1 * targetHeight}, 
         {x: u1 * targetWidth, y: v2 * targetHeight}
       );
       
-      // Triangle 2: Top-Right, Bottom-Right, Bottom-Left
       drawTriangle(ctx, img, p2, p3, p4, 
         {x: u2 * targetWidth, y: v1 * targetHeight}, 
         {x: u2 * targetWidth, y: v2 * targetHeight}, 

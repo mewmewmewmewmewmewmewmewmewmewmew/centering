@@ -155,13 +155,15 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
     const tbRatio = (topHeight / tbTotal) * 100;
 
   return (
-    <div className="relative h-full w-full flex items-center justify-center overflow-hidden rounded-[18px]">
+    <div className="relative h-full w-full flex items-center justify-center overflow-hidden rounded-[18px] bg-black/20">
       <div 
         ref={containerRef}
-        className="relative h-fit w-fit max-w-full max-h-full aspect-[2.5/3.5] rounded-[18px] overflow-visible select-none cursor-default transition-transform duration-200"
+        className="relative h-fit w-fit max-w-full max-h-full aspect-[2.5/3.5] rounded-[18px] overflow-visible select-none cursor-default transition-transform duration-200 flex items-center justify-center"
         style={{
           transform: dragging ? 'scale(2)' : 'scale(1)',
-          transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`
+          transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
+          minWidth: '100px',
+          minHeight: '140px'
         }}
         onMouseMove={handleMouseMove}
         onTouchMove={handleTouchMove}
@@ -170,8 +172,9 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
         onMouseLeave={handleMouseUp}
       >
         <img 
+          key={image.substring(0, 50)} // Force re-render when image changes
           src={image} 
-          className="max-w-full max-h-full block rounded-[18px] pointer-events-none" 
+          className="max-w-full max-h-full block rounded-[18px] pointer-events-none shadow-2xl" 
           alt="Flattened card" 
           style={{
             filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none'
