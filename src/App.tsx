@@ -31,11 +31,12 @@ export default function App() {
       // Small delay to ensure any pending renders are finished
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      const { toBlob } = await import('html-to-image');
-      const blob = await toBlob(exportRef.current, {
+      const { toPng } = await import('html-to-image');
+      const dataUrl = await toPng(exportRef.current, {
         backgroundColor: '#101010',
         pixelRatio: 2,
         skipAutoScale: true,
+        cacheBust: true,
         style: {
           padding: '40px',
           borderRadius: '0',
@@ -46,32 +47,24 @@ export default function App() {
         }
       });
       
-      if (!blob) throw new Error('Failed to generate blob');
-      
-      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.download = `mew-centering-${Date.now()}.png`;
-      link.href = url;
+      link.href = dataUrl;
       link.click();
-      
-      // Cleanup
-      setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (err) {
       console.error('Failed to save image', err);
       // Fallback attempt with even lower settings
       try {
-        const { toBlob } = await import('html-to-image');
-        const blob = await toBlob(exportRef.current, {
+        const { toPng } = await import('html-to-image');
+        const dataUrl = await toPng(exportRef.current, {
           backgroundColor: '#101010',
           pixelRatio: 1,
+          cacheBust: true,
         });
-        if (!blob) throw new Error('Failed to generate fallback blob');
-        const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.download = `mew-centering-${Date.now()}.png`;
-        link.href = url;
+        link.href = dataUrl;
         link.click();
-        setTimeout(() => URL.revokeObjectURL(url), 100);
       } catch (err2) {
         console.error('Fallback failed', err2);
         alert('Failed to save image. Please try again or take a screenshot.');
@@ -154,7 +147,6 @@ export default function App() {
                 src="https://mew.cards/img/centerlogo.png" 
                 alt="mew logo" 
                 className="w-8 h-8 object-contain"
-                crossOrigin="anonymous"
                 referrerPolicy="no-referrer"
               />
               mew centering
@@ -332,7 +324,6 @@ export default function App() {
                                     src="https://mew.cards/img/centerlogo.png" 
                                     className="w-2.5 h-2.5 grayscale" 
                                     alt="" 
-                                    crossOrigin="anonymous"
                                     referrerPolicy="no-referrer"
                                   />
                                   <span className="text-[7px] font-bold uppercase tracking-[0.2em] lowercase">center.mew.cards</span>
