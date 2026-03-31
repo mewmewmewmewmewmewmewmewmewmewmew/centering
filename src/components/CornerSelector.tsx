@@ -5,9 +5,10 @@ interface CornerSelectorProps {
   image: string;
   corners: Point[];
   onCornersChange: (corners: Point[]) => void;
+  filters?: { brightness: number; contrast: number; saturation: number };
 }
 
-export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, onCornersChange }) => {
+export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, onCornersChange, filters }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
@@ -143,14 +144,41 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
     return avgWidth * containerSize.width * 0.05;
   };
 
-  const r = getDynamicRadius();
+  const getCornerPath = (idx: number, radius: number) => {
+    const neighbors = idx === 0 ? [1, 3] :
+                      idx === 1 ? [0, 2] :
+                      idx === 2 ? [1, 3] : [2, 0];
+    
+    const p0 = corners[idx];
+    const p1 = corners[neighbors[0]];
+    const p2 = corners[neighbors[1]];
 
-  const paths = [
-    `M 0,${r} A ${r},${r} 0 0 1 ${r},0`, // Top-Left
-    `M 0,${r} A ${r},${r} 0 0 0 -${r},0`, // Top-Right
-    `M 0,-${r} A ${r},${r} 0 0 1 -${r},0`, // Bottom-Right
-    `M 0,-${r} A ${r},${r} 0 0 0 ${r},0`, // Bottom-Left
-  ];
+    const v1 = {
+      x: (p1.x - p0.x) * containerSize.width,
+      y: (p1.y - p0.y) * containerSize.height
+    };
+    const v2 = {
+      x: (p2.x - p0.x) * containerSize.width,
+      y: (p2.y - p0.y) * containerSize.height
+    };
+
+    const len1 = Math.sqrt(v1.x * v1.x + v1.y * v1.y);
+    const len2 = Math.sqrt(v2.x * v2.x + v2.y * v2.y);
+
+    if (len1 === 0 || len2 === 0) return "";
+
+    const u1 = { x: v1.x / len1, y: v1.y / len1 };
+    const u2 = { x: v2.x / len2, y: v2.y / len2 };
+
+    const start = { x: u1.x * radius, y: u1.y * radius };
+    const end = { x: u2.x * radius, y: u2.y * radius };
+
+    // Use a quadratic Bezier to approximate the rounded corner
+    // The control point is the corner itself (0,0 in local space)
+    return `M ${start.x},${start.y} Q 0,0 ${end.x},${end.y}`;
+  };
+
+  const r = getDynamicRadius();
 
   return (
     <div className="relative h-full w-full flex items-center justify-center overflow-hidden p-4">
@@ -168,6 +196,9 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
           src={image} 
           className="w-full h-full block rounded-lg pointer-events-none object-contain" 
           alt="Card to analyze" 
+          style={{
+            filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none'
+          }}
         />
         
         <svg 
@@ -214,21 +245,27 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                 )}
                 <circle cx="0" cy="0" r="2.5" className="fill-red-600" />
                 <path 
-                  d={paths[i]} 
+                  d={getCornerPath(i, r)} 
                   fill="none" 
                   className="stroke-red-600 stroke-[4]" 
                 />
-                {/* Theoretical sharp corner lines */}
-                <line 
-                  x1={0} y1={0} 
-                  x2={i === 0 || i === 3 ? 60 : -60} y2={0} 
-                  className="stroke-red-600/30 stroke-[2]" 
-                />
-                <line 
-                  x1={0} y1={0} 
-                  x2={0} y2={i === 0 || i === 1 ? 60 : -60} 
-                  className="stroke-red-600/30 stroke-[2]" 
-                />
+                {/* Theoretical sharp corner lines following actual perspective */}
+                {(() => {
+                  const neighbors = i === 0 ? [1, 3] :
+                                    i === 1 ? [0, 2] :
+                                    i === 2 ? [1, 3] : [2, 0];
+                  const p0 = corners[i];
+                  const p1 = corners[neighbors[0]];
+                  const p2 = corners[neighbors[1]];
+                  const angle1 = Math.atan2((p1.y - p0.y) * containerSize.height, (p1.x - p0.x) * containerSize.width);
+                  const angle2 = Math.atan2((p2.y - p0.y) * containerSize.height, (p2.x - p0.x) * containerSize.width);
+                  return (
+                    <>
+                      <line x1={0} y1={0} x2={Math.cos(angle1) * 60} y2={Math.sin(angle1) * 60} className="stroke-red-600/30 stroke-[2]" />
+                      <line x1={0} y1={0} x2={Math.cos(angle2) * 60} y2={Math.sin(angle2) * 60} className="stroke-red-600/30 stroke-[2]" />
+                    </>
+                  );
+                })()}
               </g>
             );
           })}
@@ -298,7 +335,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
         {/* Magnifier / Zoom */}
         {draggingIdx !== null && containerRef.current && (
           <div 
-            className="absolute pointer-events-none z-50 border-4 border-red-600 rounded-full overflow-hidden shadow-2xl bg-black"
+            className="absolute pointer-events-none z-50 border-4 border-red-600 rounded-full overflow-hidden shadow-2xl bg-black box-content"
             style={{
               width: '180px',
               height: '180px',
@@ -312,6 +349,23 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
               const focalX = corners[draggingIdx].x * containerSize.width;
               const focalY = corners[draggingIdx].y * containerSize.height;
 
+              // Move the center of the zoom around the corner radius
+              // We shift the sharp corner towards the edge of the magnifier to show more of the card's interior
+              const targetX = draggingIdx === 0 || draggingIdx === 3 ? 60 : 120;
+              const targetY = draggingIdx === 0 || draggingIdx === 1 ? 60 : 120;
+
+              // Calculate angles for the two edges connected to this corner
+              const neighbors = draggingIdx === 0 ? [1, 3] :
+                                draggingIdx === 1 ? [0, 2] :
+                                draggingIdx === 2 ? [1, 3] : [2, 0];
+              
+              const p0 = corners[draggingIdx];
+              const p1 = corners[neighbors[0]];
+              const p2 = corners[neighbors[1]];
+
+              const angle1 = Math.atan2((p1.y - p0.y) * containerSize.height, (p1.x - p0.x) * containerSize.width);
+              const angle2 = Math.atan2((p2.y - p0.y) * containerSize.height, (p2.x - p0.x) * containerSize.width);
+
               return (
                 <>
                   <div 
@@ -319,19 +373,28 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                     style={{
                       backgroundImage: `url(${image})`,
                       backgroundSize: `${containerSize.width * zoom}px ${containerSize.height * zoom}px`,
-                      backgroundPosition: `${-(focalX * zoom) + 90}px ${-(focalY * zoom) + 90}px`,
-                      backgroundRepeat: 'no-repeat'
+                      backgroundPosition: `${-(focalX * zoom) + targetX}px ${-(focalY * zoom) + targetY}px`,
+                      backgroundRepeat: 'no-repeat',
+                      filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none'
                     }}
                   />
                   
                   <svg className="absolute inset-0 w-full h-full" viewBox="0 0 180 180">
-                    <g transform={`translate(90, 90) scale(${zoom})`}>
+                    <g transform={`translate(${targetX}, ${targetY}) scale(${zoom})`}>
                       <line x1="-30" y1="0" x2="30" y2="0" className="stroke-white/50" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
                       <line x1="0" y1="-30" x2="0" y2="30" className="stroke-white/50" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
                       <circle cx="0" cy="0" r="2" className="fill-red-600" />
-                      <path d={paths[draggingIdx]} fill="none" className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-                      <line x1={0} y1={0} x2={draggingIdx === 0 || draggingIdx === 3 ? 60 : -60} y2={0} className="stroke-red-600/30" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                      <line x1={0} y1={0} x2={0} y2={draggingIdx === 0 || draggingIdx === 1 ? 60 : -60} className="stroke-red-600/30" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                      
+                      {/* Rounded corner guide */}
+                      <path d={getCornerPath(draggingIdx, r)} fill="none" className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                      
+                      {/* Dynamic edge lines reflecting actual perspective */}
+                      <line x1={0} y1={0} x2={Math.cos(angle1) * 60} y2={Math.sin(angle1) * 60} className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                      <line x1={0} y1={0} x2={Math.cos(angle2) * 60} y2={Math.sin(angle2) * 60} className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                      
+                      {/* Faint extension lines */}
+                      <line x1={0} y1={0} x2={Math.cos(angle1) * 120} y2={Math.sin(angle1) * 120} className="stroke-red-600/20" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                      <line x1={0} y1={0} x2={Math.cos(angle2) * 120} y2={Math.sin(angle2) * 120} className="stroke-red-600/20" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                     </g>
                   </svg>
                 </>

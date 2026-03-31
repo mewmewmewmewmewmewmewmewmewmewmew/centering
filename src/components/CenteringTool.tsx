@@ -4,9 +4,10 @@ import { cn } from '../lib/utils';
 interface CenteringToolProps {
   image: string;
   onRatiosChange: (lr: number, tb: number) => void;
+  filters?: { brightness: number; contrast: number; saturation: number };
 }
 
-export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosChange }) => {
+export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosChange, filters }) => {
   const [lines, setLines] = useState({
     left: 0.05,
     right: 0.95,
@@ -134,7 +135,14 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
-        <img src={image} className="max-w-full max-h-full block rounded-lg pointer-events-none" alt="Flattened card" />
+        <img 
+          src={image} 
+          className="max-w-full max-h-full block rounded-lg pointer-events-none" 
+          alt="Flattened card" 
+          style={{
+            filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none'
+          }}
+        />
         
         {/* Overlay for borders */}
         <div className="absolute inset-0 pointer-events-none">

@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { Upload, Layers, RotateCcw, Instagram, Download } from 'lucide-react';
+import { Upload, Layers, RotateCcw, Instagram, Download, Sun, Contrast, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDropzone } from 'react-dropzone';
 import { toPng } from 'html-to-image';
@@ -21,25 +21,41 @@ export default function App() {
   ]);
   const [flattenedImage, setFlattenedImage] = useState<string | null>(null);
   const [ratios, setRatios] = useState({ lr: 50, tb: 50 });
+  const [filters, setFilters] = useState({ brightness: 0, contrast: 0, saturation: 0 });
+  const [isSaving, setIsSaving] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
   const handleSaveImage = async () => {
-    if (!exportRef.current) return;
+    if (!exportRef.current || isSaving) return;
+    setIsSaving(true);
     try {
+      // Small delay to ensure any pending renders are finished
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const dataUrl = await toPng(exportRef.current, {
         cacheBust: true,
         backgroundColor: '#101010',
+        pixelRatio: 3, // Higher quality
+        skipAutoScale: true,
         style: {
-          padding: '24px',
-          borderRadius: '12px'
+          padding: '40px',
+          borderRadius: '0', // Square corners for the final export
+          margin: '0',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '24px'
         }
       });
+      
       const link = document.createElement('a');
       link.download = `mew-centering-${Date.now()}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
       console.error('Failed to save image', err);
+      alert('Failed to save image. Please try again or take a screenshot.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -118,7 +134,7 @@ export default function App() {
                 className="w-8 h-8 object-contain"
                 referrerPolicy="no-referrer"
               />
-              center.mew.cards
+              mew centering
             </h1>
           </div>
           <button 
@@ -176,17 +192,53 @@ export default function App() {
                       {/* Corner Selector */}
                       <div className="flex-1 min-w-0 flex flex-col space-y-2">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">1. Corners</h3>
+                          <h3 className="text-[10px] font-bold uppercase tracking-widest">
+                            <span className="text-[#e6bbd4]">1.</span> <span className="text-white/40">Corners</span>
+                          </h3>
                         </div>
-                        <div className="flex-1 min-h-0">
-                          {image && (
-                            <CornerSelector 
-                              image={image} 
-                              corners={corners} 
-                              onCornersChange={setCorners} 
-                            />
-                          )}
+                        <div className="flex-1 min-h-0 flex flex-col">
+                          <div className="flex-1 min-h-0">
+                            {image && (
+                              <CornerSelector 
+                                image={image} 
+                                corners={corners} 
+                                onCornersChange={setCorners} 
+                                filters={filters}
+                              />
+                            )}
+                          </div>
+                          
+                          {/* Image Controls */}
+                          <div className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-3 mt-[10px]">
+                            <div className="flex items-center gap-3">
+                              <Sun className="w-3 h-3 text-white/40 shrink-0" />
+                              <input 
+                                type="range" min="-100" max="100" value={filters.brightness} 
+                                onChange={(e) => setFilters(f => ({ ...f, brightness: parseInt(e.target.value) }))}
+                                className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
+                              />
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Contrast className="w-3 h-3 text-white/40 shrink-0" />
+                              <input 
+                                type="range" min="-100" max="100" value={filters.contrast} 
+                                onChange={(e) => setFilters(f => ({ ...f, contrast: parseInt(e.target.value) }))}
+                                className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
+                              />
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <Palette className="w-3 h-3 text-white/40 shrink-0" />
+                              <input 
+                                type="range" min="-100" max="100" value={filters.saturation} 
+                                onChange={(e) => setFilters(f => ({ ...f, saturation: parseInt(e.target.value) }))}
+                                className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
+                              />
+                            </div>
+                          </div>
                         </div>
+
+                        <div className="h-[18px] mt-2" /> {/* Spacer to align with save link on the right */}
+
                         <CardFlattener 
                           image={image!} 
                           corners={corners} 
@@ -194,26 +246,20 @@ export default function App() {
                         />
                       </div>
 
-                      {/* Centering Tool */}
-                      <div className="flex-1 min-w-0 flex flex-col space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-[10px] font-bold text-white/30 uppercase tracking-widest">2. Centering</h3>
-                          {flattenedImage && (
-                            <button 
-                              onClick={handleSaveImage}
-                              className="flex items-center gap-1.5 px-2 py-1 bg-[#e6bbd4]/10 border border-[#e6bbd4]/20 rounded text-[9px] font-bold uppercase tracking-widest text-[#e6bbd4] hover:bg-[#e6bbd4]/20 transition-colors"
-                            >
-                              <Download className="w-3 h-3" /> Save Image
-                            </button>
-                          )}
-                        </div>
-                        <div className="flex-1 min-h-0 flex flex-col gap-4">
-                          <div ref={exportRef} className="flex-1 min-h-0 flex flex-col gap-6 bg-[#101010] p-6 rounded-xl border border-white/5">
+                        <div className="flex-1 min-w-0 flex flex-col space-y-2">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-[10px] font-bold uppercase tracking-widest">
+                              <span className="text-[#e6bbd4]">2.</span> <span className="text-white/40">Centering</span>
+                            </h3>
+                          </div>
+                          <div className="flex-1 min-h-0 flex flex-col">
+                            <div ref={exportRef} className="flex-1 min-h-0 flex flex-col gap-4 bg-[#101010] p-4 rounded-xl border border-white/5">
                             <div className="flex-1 min-h-0">
                               {flattenedImage ? (
                                 <CenteringTool 
                                   image={flattenedImage} 
                                   onRatiosChange={(lr, tb) => setRatios({ lr, tb })} 
+                                  filters={filters}
                                 />
                               ) : (
                                 <div className="relative h-full w-full flex items-center justify-center">
@@ -226,43 +272,64 @@ export default function App() {
 
                             {/* Centering Report Section */}
                             {flattenedImage && (
-                              <div className="space-y-4 pt-2 border-t border-white/5">
+                              <div className="space-y-3 pt-2 border-t border-white/5">
                                 {/* Row 1: Grades */}
-                                <div className="grid grid-cols-3 gap-3">
+                                <div className="grid grid-cols-3 gap-2">
                                   {(['PSA', 'BGS', 'CGC'] as const).map(company => {
                                     const lrGrade = getGrade(ratios.lr, company);
                                     const tbGrade = getGrade(ratios.tb, company);
                                     const overall = Math.abs(50 - ratios.lr) > Math.abs(50 - ratios.tb) ? lrGrade : tbGrade;
                                     return (
-                                      <div key={company} className="flex flex-col items-center gap-1 bg-white/5 p-2 rounded border border-white/5">
-                                        <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">{company}</span>
-                                        <span className={cn("text-xl font-black", overall.color)}>{overall.grade}</span>
+                                      <div key={company} className="flex flex-col items-center gap-1 bg-white/5 p-1.5 rounded border border-white/5">
+                                        <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest">{company}</span>
+                                        <span className={cn("text-lg font-black", overall.color)}>{overall.grade}</span>
                                       </div>
                                     );
                                   })}
                                 </div>
 
                                 {/* Row 2: Centering Ratios */}
-                                <div className="flex items-center justify-around bg-white/5 p-2 rounded border border-white/5">
+                                <div className="flex items-center justify-around bg-white/5 p-1.5 rounded border border-white/5">
                                   <div className="flex flex-col items-center">
-                                    <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest mb-1">Left / Right</span>
-                                    <span className="text-sm font-mono font-bold text-[#e6bbd4]">{ratios.lr.toFixed(1)} : {(100 - ratios.lr).toFixed(1)}</span>
+                                    <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest mb-0.5">Left / Right</span>
+                                    <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.lr.toFixed(1)} : {(100 - ratios.lr).toFixed(1)}</span>
                                   </div>
-                                  <div className="w-[1px] h-8 bg-white/10" />
+                                  <div className="w-[1px] h-6 bg-white/10" />
                                   <div className="flex flex-col items-center">
-                                    <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest mb-1">Top / Bottom</span>
-                                    <span className="text-sm font-mono font-bold text-[#e6bbd4]">{ratios.tb.toFixed(1)} : {(100 - ratios.tb).toFixed(1)}</span>
+                                    <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest mb-0.5">Top / Bottom</span>
+                                    <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.tb.toFixed(1)} : {(100 - ratios.tb).toFixed(1)}</span>
                                   </div>
                                 </div>
 
                                 {/* Branding */}
                                 <div className="flex items-center justify-center gap-2 opacity-30">
-                                  <img src="https://mew.cards/img/centerlogo.png" className="w-3 h-3 grayscale" alt="" />
-                                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] lowercase">center.mew.cards</span>
+                                  <img src="https://mew.cards/img/centerlogo.png" className="w-2.5 h-2.5 grayscale" alt="" />
+                                  <span className="text-[7px] font-bold uppercase tracking-[0.2em] lowercase">center.mew.cards</span>
                                 </div>
                               </div>
                             )}
                           </div>
+                          
+                          {flattenedImage && (
+                            <div className="flex justify-end mt-2">
+                              <button 
+                                onClick={handleSaveImage}
+                                disabled={isSaving}
+                                className={cn(
+                                  "text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5",
+                                  isSaving ? "text-white/20 cursor-wait" : "text-[#e6bbd4] hover:text-[#e6bbd4]/80 active:scale-[0.98]"
+                                )}
+                              >
+                                {isSaving ? (
+                                  "Saving..."
+                                ) : (
+                                  <>
+                                    <Download className="w-3 h-3" /> save image
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
