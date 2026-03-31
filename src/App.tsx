@@ -196,43 +196,45 @@ export default function App() {
                             <span className="text-[#e6bbd4]">1.</span> <span className="text-white/40">Corners</span>
                           </h3>
                         </div>
-                        <div className="flex-1 min-h-0 flex flex-col">
-                          <div className="flex-1 min-h-0">
-                            {image && (
-                              <CornerSelector 
-                                image={image} 
-                                corners={corners} 
-                                onCornersChange={setCorners} 
-                                filters={filters}
-                              />
-                            )}
-                          </div>
-                          
-                          {/* Image Controls */}
-                          <div className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-3 mt-[10px]">
-                            <div className="flex items-center gap-3">
-                              <Sun className="w-3 h-3 text-white/40 shrink-0" />
-                              <input 
-                                type="range" min="-100" max="100" value={filters.brightness} 
-                                onChange={(e) => setFilters(f => ({ ...f, brightness: parseInt(e.target.value) }))}
-                                className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
-                              />
+                        <div className="flex-1 min-h-0 flex flex-col items-center">
+                          <div className="w-fit mx-auto flex flex-col">
+                            <div className="h-fit">
+                              {image && (
+                                <CornerSelector 
+                                  image={image} 
+                                  corners={corners} 
+                                  onCornersChange={setCorners} 
+                                  filters={filters}
+                                />
+                              )}
                             </div>
-                            <div className="flex items-center gap-3">
-                              <Contrast className="w-3 h-3 text-white/40 shrink-0" />
-                              <input 
-                                type="range" min="-100" max="100" value={filters.contrast} 
-                                onChange={(e) => setFilters(f => ({ ...f, contrast: parseInt(e.target.value) }))}
-                                className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
-                              />
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <Palette className="w-3 h-3 text-white/40 shrink-0" />
-                              <input 
-                                type="range" min="-100" max="100" value={filters.saturation} 
-                                onChange={(e) => setFilters(f => ({ ...f, saturation: parseInt(e.target.value) }))}
-                                className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
-                              />
+                            
+                            {/* Image Controls */}
+                            <div className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-3 mt-[10px] w-full">
+                              <div className="flex items-center gap-3">
+                                <Sun className="w-3 h-3 text-white/40 shrink-0" />
+                                <input 
+                                  type="range" min="-100" max="100" value={filters.brightness} 
+                                  onChange={(e) => setFilters(f => ({ ...f, brightness: parseInt(e.target.value) }))}
+                                  className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
+                                />
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <Contrast className="w-3 h-3 text-white/40 shrink-0" />
+                                <input 
+                                  type="range" min="-100" max="100" value={filters.contrast} 
+                                  onChange={(e) => setFilters(f => ({ ...f, contrast: parseInt(e.target.value) }))}
+                                  className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
+                                />
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <Palette className="w-3 h-3 text-white/40 shrink-0" />
+                                <input 
+                                  type="range" min="-100" max="100" value={filters.saturation} 
+                                  onChange={(e) => setFilters(f => ({ ...f, saturation: parseInt(e.target.value) }))}
+                                  className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
+                                />
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -253,7 +255,7 @@ export default function App() {
                             </h3>
                           </div>
                           <div className="flex-1 min-h-0 flex flex-col">
-                            <div ref={exportRef} className="flex-1 min-h-0 flex flex-col gap-4 bg-[#101010] p-4 rounded-xl border border-white/5">
+                            <div ref={exportRef} className="flex-1 min-h-0 flex flex-col gap-3 bg-[#101010] pt-4 px-4 pb-1.5 rounded-xl border border-white/5">
                             <div className="flex-1 min-h-0">
                               {flattenedImage ? (
                                 <CenteringTool 
