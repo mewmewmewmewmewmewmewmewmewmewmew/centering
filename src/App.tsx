@@ -179,8 +179,8 @@ export default function App() {
                 exit={{ opacity: 0 }}
                 {...getRootProps()} 
                 className={cn(
-                  "border border-white/10 rounded-xl p-20 flex flex-col items-center justify-center gap-4 transition-all cursor-pointer bg-white/5 gloss-box",
-                  isDragActive ? "border-[#e6bbd4] bg-[#e6bbd4]/5" : "hover:border-white/20 hover:bg-white/10"
+                  "rounded-xl p-20 flex flex-col items-center justify-center gap-4 transition-all cursor-pointer gloss-box",
+                  isDragActive ? "border-[#e6bbd4] bg-[#e6bbd4]/5" : "hover:bg-white/5"
                 )}
               >
                 <input {...getInputProps()} />
@@ -222,7 +222,7 @@ export default function App() {
                         </div>
                         
                         {/* Image Controls */}
-                        <div className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-3 mt-[10px] w-full gloss-box">
+                        <div className="p-3 rounded-lg space-y-3 mt-[10px] w-full gloss-box">
                           {[
                             { icon: Sun, value: filters.brightness, key: 'brightness' },
                             { icon: Contrast, value: filters.contrast, key: 'contrast' },
@@ -270,7 +270,7 @@ export default function App() {
                       </div>
                       <div className="flex-1 min-h-0 flex flex-col">
                         <div className="flex-1 min-h-0 flex flex-col">
-                          <div ref={exportRef} className="bg-[#1a1a1a] p-4 pb-2 rounded-[34px] border border-white/5 flex flex-col gap-3 gloss-box">
+                          <div ref={exportRef} className="p-4 pb-2 rounded-[34px] flex flex-col gap-3 gloss-box">
                             <div className="aspect-[2.5/3.5] w-full">
                               {flattenedImage ? (
                                 <CenteringTool 
@@ -297,7 +297,7 @@ export default function App() {
                                     const tbGrade = getGrade(ratios.tb, company);
                                     const overall = Math.abs(50 - ratios.lr) > Math.abs(50 - ratios.tb) ? lrGrade : tbGrade;
                                     return (
-                                      <div key={company} className="flex flex-col items-center gap-1 bg-white/5 p-2 rounded-[8px] border border-white/5 gloss-box">
+                                      <div key={company} className="flex flex-col items-center gap-1 p-2 rounded-[8px] gloss-box">
                                         <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest">{company}</span>
                                         <span className={cn("text-lg font-black", overall.color)}>{overall.grade}</span>
                                       </div>
@@ -306,7 +306,7 @@ export default function App() {
                                 </div>
 
                                 {/* Row 2: Centering Ratios */}
-                                <div className="flex items-center justify-around bg-white/5 p-2 rounded-t-[8px] rounded-b-[18px] border border-white/5 gloss-box">
+                                <div className="flex items-center justify-around p-2 rounded-t-[8px] rounded-b-[18px] gloss-box">
                                   <div className="flex flex-col items-center">
                                     <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest mb-0.5">Left / Right</span>
                                     <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.lr.toFixed(1)} : {(100 - ratios.lr).toFixed(1)}</span>
