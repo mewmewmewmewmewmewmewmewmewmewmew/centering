@@ -41,7 +41,15 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
       const rect = containerRef.current.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
       const y = ((e.clientY - rect.top) / rect.height) * 100;
-      setZoomOrigin({ x, y });
+      
+      let zX = x;
+      let zY = y;
+      if (side === 'left') zX = 0;
+      if (side === 'right') zX = 100;
+      if (side === 'top') zY = 0;
+      if (side === 'bottom') zY = 100;
+      
+      setZoomOrigin({ x: zX, y: zY });
     }
     setDragging(side);
   };
@@ -56,6 +64,15 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
     setMousePos({ x: e.clientX, y: e.clientY });
 
     if (!dragging) return;
+
+    // Update zoomOrigin dynamically while dragging to keep the edge flush
+    let zX = x * 100;
+    let zY = y * 100;
+    if (dragging === 'left') zX = 0;
+    if (dragging === 'right') zX = 100;
+    if (dragging === 'top') zY = 0;
+    if (dragging === 'bottom') zY = 100;
+    setZoomOrigin({ x: zX, y: zY });
 
     const newLines = { ...lines };
     if (dragging === 'left') newLines.left = Math.max(0, Math.min(lines.right - 0.01, x));

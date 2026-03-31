@@ -153,15 +153,20 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
   ];
 
   return (
-    <div className="relative h-full flex items-center justify-center">
+    <div className="relative h-full w-full flex items-center justify-center overflow-hidden p-4">
       <div 
         ref={containerRef}
-        className="relative w-fit h-fit max-w-full max-h-full bg-black/10 rounded-lg overflow-visible cursor-crosshair select-none"
+        className="relative bg-black/20 rounded-lg overflow-visible cursor-crosshair select-none shadow-2xl"
         onMouseMove={handleMouseMove}
+        style={{
+          aspectRatio: imgSize.width && imgSize.height ? `${imgSize.width} / ${imgSize.height}` : 'auto',
+          maxHeight: '100%',
+          maxWidth: '100%',
+        }}
       >
         <img 
           src={image} 
-          className="max-w-full max-h-full block rounded-lg pointer-events-none" 
+          className="w-full h-full block rounded-lg pointer-events-none object-contain" 
           alt="Card to analyze" 
         />
         
@@ -297,18 +302,15 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
             style={{
               width: '180px',
               height: '180px',
-              left: `${Math.max(90, Math.min(containerSize.width - 90, mousePos.x - containerRef.current.getBoundingClientRect().left))}px`,
-              top: `${Math.max(90, Math.min(containerSize.height - 90, (mousePos.y - containerRef.current.getBoundingClientRect().top) - 120))}px`,
+              left: `${Math.max(90, Math.min(containerSize.width - 90, corners[draggingIdx].x * containerSize.width))}px`,
+              top: `${Math.max(90, Math.min(containerSize.height - 90, (corners[draggingIdx].y * containerSize.height) - 120))}px`,
               transform: 'translate(-50%, -50%)',
             }}
           >
             {(() => {
-              const zoom = 3.6;
-              const r_zoom = 20;
-              const offX = (draggingIdx === 0 || draggingIdx === 3 ? 1 : -1) * (r_zoom / 2);
-              const offY = (draggingIdx === 0 || draggingIdx === 1 ? 1 : -1) * (r_zoom / 2);
-              const focalX = corners[draggingIdx].x * containerSize.width + offX;
-              const focalY = corners[draggingIdx].y * containerSize.height + offY;
+              const zoom = 4;
+              const focalX = corners[draggingIdx].x * containerSize.width;
+              const focalY = corners[draggingIdx].y * containerSize.height;
 
               return (
                 <>
@@ -323,11 +325,11 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                   />
                   
                   <svg className="absolute inset-0 w-full h-full" viewBox="0 0 180 180">
-                    <g transform={`translate(${90 - offX * zoom}, ${90 - offY * zoom}) scale(${zoom})`}>
+                    <g transform={`translate(90, 90) scale(${zoom})`}>
                       <line x1="-30" y1="0" x2="30" y2="0" className="stroke-white/50" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
                       <line x1="0" y1="-30" x2="0" y2="30" className="stroke-white/50" strokeWidth="0.5" vectorEffect="non-scaling-stroke" />
-                      <circle cx="0" cy="0" r="2.5" className="fill-red-600" />
-                      <path d={paths[draggingIdx]} fill="none" className="stroke-red-600" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                      <circle cx="0" cy="0" r="2" className="fill-red-600" />
+                      <path d={paths[draggingIdx]} fill="none" className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
                       <line x1={0} y1={0} x2={draggingIdx === 0 || draggingIdx === 3 ? 60 : -60} y2={0} className="stroke-red-600/30" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                       <line x1={0} y1={0} x2={0} y2={draggingIdx === 0 || draggingIdx === 1 ? 60 : -60} className="stroke-red-600/30" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                     </g>
