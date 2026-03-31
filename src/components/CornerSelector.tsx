@@ -174,16 +174,39 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
             points={corners.map(p => `${p.x * containerSize.width},${p.y * containerSize.height}`).join(' ')}
             className={cn(
               "fill-red-600/5 stroke-red-600 stroke-[2] transition-all",
-              draggingLine ? "stroke-red-600 stroke-[3]" : "stroke-dash-2"
+              draggingLine ? "stroke-red-600 stroke-[3]" : ""
             )}
-            strokeDasharray={draggingLine ? "0" : "10 10"}
+            strokeDasharray={draggingLine ? "0" : "6 6"}
           />
           {/* Crosshairs for each corner */}
           {corners.map((p, i) => {
             return (
               <g key={`cross-${i}`} transform={`translate(${p.x * containerSize.width}, ${p.y * containerSize.height})`}>
-                <line x1="-30" y1="0" x2="30" y2="0" className="stroke-white/50 stroke-[2]" />
-                <line x1="0" y1="-30" x2="0" y2="30" className="stroke-white/50 stroke-[2]" />
+                {/* Outer crosshair lines with offset */}
+                {i === 0 && ( // Top-Left
+                  <>
+                    <line x1="-30" y1="0" x2="-6" y2="0" className="stroke-white/50 stroke-[2]" />
+                    <line x1="0" y1="-30" x2="0" y2="-6" className="stroke-white/50 stroke-[2]" />
+                  </>
+                )}
+                {i === 1 && ( // Top-Right
+                  <>
+                    <line x1="6" y1="0" x2="30" y2="0" className="stroke-white/50 stroke-[2]" />
+                    <line x1="0" y1="-30" x2="0" y2="-6" className="stroke-white/50 stroke-[2]" />
+                  </>
+                )}
+                {i === 2 && ( // Bottom-Right
+                  <>
+                    <line x1="6" y1="0" x2="30" y2="0" className="stroke-white/50 stroke-[2]" />
+                    <line x1="0" y1="6" x2="0" y2="30" className="stroke-white/50 stroke-[2]" />
+                  </>
+                )}
+                {i === 3 && ( // Bottom-Left
+                  <>
+                    <line x1="-30" y1="0" x2="-6" y2="0" className="stroke-white/50 stroke-[2]" />
+                    <line x1="0" y1="6" x2="0" y2="30" className="stroke-white/50 stroke-[2]" />
+                  </>
+                )}
                 <circle cx="0" cy="0" r="2.5" className="fill-red-600" />
                 <path 
                   d={paths[i]} 
@@ -263,21 +286,6 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
               }}
             >
               <div className="w-2 h-2 rounded-full bg-white/20" />
-              <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-black text-[8px] text-white px-1.5 py-0.5 rounded font-black shadow-sm border border-white/20">
-                {i + 1}
-              </div>
-              {/* Connector line */}
-              <div 
-                className="absolute w-[2px] bg-red-600/60 pointer-events-none"
-                style={{
-                  height: '16px',
-                  top: offsetY > 0 ? 'auto' : '100%',
-                  bottom: offsetY < 0 ? 'auto' : '100%',
-                  left: '50%',
-                  transform: `translateX(-50%) ${offsetY > 0 ? 'rotate(180deg)' : 'rotate(0deg)'}`,
-                  transformOrigin: 'top'
-                }}
-              />
             </div>
           );
         })}

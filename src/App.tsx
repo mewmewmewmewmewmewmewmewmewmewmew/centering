@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { Upload, Layers, RotateCcw } from 'lucide-react';
+import { Upload, Layers, RotateCcw, Instagram } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDropzone } from 'react-dropzone';
 import { CornerSelector } from './components/CornerSelector';
@@ -89,9 +89,14 @@ export default function App() {
         {/* Header */}
         <header className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-xl font-black tracking-tighter flex items-center gap-2 text-[#e6bbd4]">
-              <Layers className="w-6 h-6" />
-              CARD CENTERING PRO
+            <h1 className="text-xl font-bold tracking-tight flex items-center gap-3 text-white lowercase">
+              <img 
+                src="https://mew.cards/img/centerlogo.png" 
+                alt="mew logo" 
+                className="w-8 h-8 object-contain"
+                referrerPolicy="no-referrer"
+              />
+              mew centering
             </h1>
           </div>
           <button 
@@ -121,8 +126,8 @@ export default function App() {
                   <Upload className="w-8 h-8" />
                 </div>
                 <div className="text-center">
-                  <p className="text-lg font-bold">Drop card image</p>
-                  <p className="text-xs text-white/40 mt-1 uppercase tracking-widest">or click to browse / paste</p>
+                  <p className="text-lg font-bold">Drop or paste card image</p>
+                  <p className="text-xs text-white/40 mt-1 uppercase tracking-widest">or click to browse</p>
                 </div>
               </motion.div>
             ) : (
@@ -136,7 +141,10 @@ export default function App() {
                 <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
                   <div className="p-3 border-b border-white/10 flex items-center justify-between bg-white/5">
                     <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#e6bbd4]" />
+                      <div className="relative flex h-1.5 w-1.5">
+                        <div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#e6bbd4] opacity-75"></div>
+                        <div className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#e6bbd4]"></div>
+                      </div>
                       <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Analysis Workspace</span>
                     </div>
 
@@ -215,6 +223,33 @@ export default function App() {
             )}
           </AnimatePresence>
         </main>
+        <footer className="mt-12 pb-12 flex flex-col items-center gap-4">
+          <div className="flex items-center gap-6">
+            <a 
+              href="https://x.com/mewmewnami" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-white/30 hover:text-white/60 transition-colors"
+              aria-label="X (formerly Twitter)"
+            >
+              <svg 
+                viewBox="0 0 24 24" 
+                className="w-5 h-5 fill-current"
+                aria-hidden="true"
+              >
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+            </a>
+            <a 
+              href="https://instagram.com/myu" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-white/30 hover:text-white/60 transition-colors"
+            >
+              <Instagram className="w-5 h-5" />
+            </a>
+          </div>
+        </footer>
       </div>
     </div>
   );
