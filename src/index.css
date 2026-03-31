@@ -5,6 +5,12 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
+html, body {
+  background-color: #101010;
+  margin: 0;
+  padding: 0;
+}
+
 @layer utilities {
   .gloss-box {
     @apply relative overflow-hidden;
