@@ -57,6 +57,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
 
   const handleTouchStart = (side: string) => (e: React.TouchEvent) => {
     if (e.touches.length > 0 && containerRef.current) {
+      e.preventDefault(); // Prevent scroll start
       const rect = containerRef.current.getBoundingClientRect();
       const x = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
       const y = ((e.touches[0].clientY - rect.top) / rect.height) * 100;
@@ -158,7 +159,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
     <div className="relative h-full w-full flex items-center justify-center overflow-hidden rounded-[18px] bg-black/20">
       <div 
         ref={containerRef}
-        className="relative w-full h-full max-w-full max-h-full aspect-[2.5/3.5] rounded-[18px] overflow-visible select-none cursor-default transition-transform duration-200 flex items-center justify-center"
+        className="relative w-full h-full max-w-full max-h-full aspect-[2.5/3.5] rounded-[18px] overflow-visible select-none cursor-default transition-transform duration-200 flex items-center justify-center touch-none"
         style={{
           transform: dragging ? 'scale(2)' : 'scale(1)',
           transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
