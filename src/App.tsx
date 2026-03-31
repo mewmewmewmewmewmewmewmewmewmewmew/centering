@@ -2,7 +2,6 @@ import React, { useState, useCallback, useRef } from 'react';
 import { Upload, Layers, RotateCcw, Instagram, Download, Sun, Contrast, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDropzone } from 'react-dropzone';
-import { toPng } from 'html-to-image';
 import { CornerSelector } from './components/CornerSelector';
 import { CardFlattener } from './components/CardFlattener';
 import { CenteringTool } from './components/CenteringTool';
@@ -30,16 +29,16 @@ export default function App() {
     setIsSaving(true);
     try {
       // Small delay to ensure any pending renders are finished
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      const dataUrl = await toPng(exportRef.current, {
-        cacheBust: true,
+      const { toBlob } = await import('html-to-image');
+      const blob = await toBlob(exportRef.current, {
         backgroundColor: '#101010',
-        pixelRatio: 3, // Higher quality
+        pixelRatio: 2,
         skipAutoScale: true,
         style: {
           padding: '40px',
-          borderRadius: '0', // Square corners for the final export
+          borderRadius: '0',
           margin: '0',
           display: 'flex',
           flexDirection: 'column',
@@ -47,13 +46,36 @@ export default function App() {
         }
       });
       
+      if (!blob) throw new Error('Failed to generate blob');
+      
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.download = `mew-centering-${Date.now()}.png`;
-      link.href = dataUrl;
+      link.href = url;
       link.click();
+      
+      // Cleanup
+      setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (err) {
       console.error('Failed to save image', err);
-      alert('Failed to save image. Please try again or take a screenshot.');
+      // Fallback attempt with even lower settings
+      try {
+        const { toBlob } = await import('html-to-image');
+        const blob = await toBlob(exportRef.current, {
+          backgroundColor: '#101010',
+          pixelRatio: 1,
+        });
+        if (!blob) throw new Error('Failed to generate fallback blob');
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `mew-centering-${Date.now()}.png`;
+        link.href = url;
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(url), 100);
+      } catch (err2) {
+        console.error('Fallback failed', err2);
+        alert('Failed to save image. Please try again or take a screenshot.');
+      }
     } finally {
       setIsSaving(false);
     }
@@ -132,6 +154,7 @@ export default function App() {
                 src="https://mew.cards/img/centerlogo.png" 
                 alt="mew logo" 
                 className="w-8 h-8 object-contain"
+                crossOrigin="anonymous"
                 referrerPolicy="no-referrer"
               />
               mew centering
@@ -305,7 +328,13 @@ export default function App() {
 
                                 {/* Branding */}
                                 <div className="flex items-center justify-center gap-2 opacity-30">
-                                  <img src="https://mew.cards/img/centerlogo.png" className="w-2.5 h-2.5 grayscale" alt="" />
+                                  <img 
+                                    src="https://mew.cards/img/centerlogo.png" 
+                                    className="w-2.5 h-2.5 grayscale" 
+                                    alt="" 
+                                    crossOrigin="anonymous"
+                                    referrerPolicy="no-referrer"
+                                  />
                                   <span className="text-[7px] font-bold uppercase tracking-[0.2em] lowercase">center.mew.cards</span>
                                 </div>
                               </div>
