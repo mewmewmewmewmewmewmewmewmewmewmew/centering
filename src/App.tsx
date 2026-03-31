@@ -51,71 +51,35 @@ export default function App() {
     setIsSaving(true);
     
     try {
-      const { toBlob } = await import('html-to-image');
+      const { toPng } = await import('html-to-image');
       
       // Wait for any transitions to settle
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const node = exportRef.current;
       
-      // Get current dimensions to lock them during capture
-      const width = node.clientWidth;
-      const height = node.clientHeight;
-
-      const blob = await toBlob(node, {
+      const dataUrl = await toPng(node, {
         backgroundColor: '#1a1a1a',
-        pixelRatio: 3,
-        width: width,
-        height: height,
+        pixelRatio: 2,
         cacheBust: true,
         style: {
           borderRadius: '0',
           transform: 'none',
           margin: '0',
-          padding: '16px', // Standardize padding for export
-          display: 'flex',
-          flexDirection: 'column',
-          width: `${width}px`,
-          height: `${height}px`,
-        },
-        filter: (node) => {
-          if (node instanceof HTMLElement) {
-            // Hide the save button container if it's inside the ref
-            return !node.classList.contains('save-button-container');
-          }
-          return true;
         }
       });
 
-      if (!blob) throw new Error('Failed to generate image blob');
+      if (!dataUrl || dataUrl === 'data:,') {
+        throw new Error('Generated image is empty');
+      }
 
-      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.download = `mew-centering-${Date.now()}.png`;
-      link.href = url;
+      link.href = dataUrl;
       link.click();
-      
-      // Cleanup
-      setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (err) {
-      console.error('Primary save failed:', err);
-      
-      try {
-        const { toPng } = await import('html-to-image');
-        const dataUrl = await toPng(exportRef.current!, {
-          backgroundColor: '#1a1a1a',
-          pixelRatio: 2,
-          cacheBust: true,
-        });
-        
-        const link = document.createElement('a');
-        link.download = `mew-centering-${Date.now()}.png`;
-        link.href = dataUrl;
-        link.click();
-      } catch (err2) {
-        console.error('All save attempts failed:', err2);
-        alert('Failed to save image. Please try taking a screenshot of the results.');
-      }
+      console.error('Save failed:', err);
+      alert('Failed to save image. Please try taking a screenshot of the results.');
     } finally {
       setIsSaving(false);
     }
@@ -184,8 +148,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#101010] text-white font-sans p-4 md:p-6" onPaste={handlePaste}>
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[#101010] text-white font-sans p-4 md:p-6 flex flex-col" onPaste={handlePaste}>
+      <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col">
         {/* Header */}
         <header className="flex items-center justify-between mb-6 gloss-box px-4 py-3 rounded-xl">
           <div>
@@ -359,16 +323,11 @@ export default function App() {
                                  {/* Branding */}
                                 <div className="flex items-center justify-center gap-2 opacity-60 pb-1">
                                   <img 
-                                    src="https://mew.cards/img/centerlogo.png" 
+                                    src={logoBase64 || "https://mew.cards/img/centerlogo.png"} 
                                     className="w-3 h-3 grayscale" 
                                     alt="" 
+                                    crossOrigin="anonymous"
                                     referrerPolicy="no-referrer"
-                                    onError={(e) => {
-                                      // If direct load fails, try base64 or fallback
-                                      if (logoBase64) {
-                                        (e.target as HTMLImageElement).src = logoBase64;
-                                      }
-                                    }}
                                   />
                                   <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-white">center.mew.cards</span>
                                 </div>
@@ -406,7 +365,7 @@ export default function App() {
           </main>
         </div>
 
-        <footer className="mt-12 mb-8 flex flex-col items-center gap-4">
+        <footer className="mt-auto pt-12 mb-8 flex flex-col items-center gap-4">
           <div className="flex items-center gap-6">
             <a 
               href="https://x.com/mewmewnami" 
