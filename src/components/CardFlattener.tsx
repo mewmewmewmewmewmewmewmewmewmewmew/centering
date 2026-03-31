@@ -1,0 +1,111 @@
+import React, { useRef, useEffect, useState } from 'react';
+import { Point, CARD_RATIO } from '../lib/utils';
+
+interface CardFlattenerProps {
+  image: string;
+  corners: Point[];
+  onFlattened: (dataUrl: string) => void;
+}
+
+export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, onFlattened }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.src = image;
+    img.onload = () => {
+      const width = 800;
+      const height = width / CARD_RATIO;
+      canvas.width = width;
+      canvas.height = height;
+
+      // We need to perform perspective transformation.
+      // Since standard canvas doesn't have a direct 4-point transform,
+      // we'll use a simple approximation or a small math helper.
+      // For now, let's draw it and we'll implement the transform logic.
+      
+      // Perspective transform logic (simplified for 2D context)
+      // This is a complex topic, but we can use a library or a manual implementation.
+      // I'll implement a basic one using triangles.
+      
+      drawPerspective(ctx, img, corners, width, height);
+      onFlattened(canvas.toDataURL('image/jpeg', 0.9));
+    };
+  }, [image, corners]);
+
+  return <canvas ref={canvasRef} className="hidden" />;
+};
+
+function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, corners: Point[], targetWidth: number, targetHeight: number) {
+  // This is a simplified version of perspective transform using triangles
+  // It's not perfect but works for simple rectification
+  const src = corners.map(p => ({ x: p.x * img.width, y: p.y * img.height }));
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, targetWidth, targetHeight);
+
+  // We'll use a more advanced approach if needed, but for now let's try to get the basic UI working.
+  // Actually, I'll use a CSS-based approach for the "interactive" part if canvas is too hard to implement manually.
+  // But the user wants to drag lines on the *flattened* card.
+  
+  // Let's use a simple triangulation approach for the canvas.
+  const subdivide = 1;
+  for (let y = 0; y < subdivide; y++) {
+    for (let x = 0; x < subdivide; x++) {
+      const x1 = x / subdivide;
+      const y1 = y / subdivide;
+      const x2 = (x + 1) / subdivide;
+      const y2 = (y + 1) / subdivide;
+
+      const p1 = interpolate(corners, x1, y1);
+      const p2 = interpolate(corners, x2, y1);
+      const p3 = interpolate(corners, x2, y2);
+      const p4 = interpolate(corners, x1, y2);
+
+      drawTriangle(ctx, img, p1, p2, p4, {x: x1*targetWidth, y: y1*targetHeight}, {x: x2*targetWidth, y: y1*targetHeight}, {x: x1*targetWidth, y: y2*targetHeight});
+      drawTriangle(ctx, img, p2, p3, p4, {x: x2*targetWidth, y: y1*targetHeight}, {x: x2*targetWidth, y: y2*targetHeight}, {x: x1*targetWidth, y: y2*targetHeight});
+    }
+  }
+}
+
+function interpolate(corners: Point[], u: number, v: number): Point {
+  const top = { x: corners[0].x + (corners[1].x - corners[0].x) * u, y: corners[0].y + (corners[1].y - corners[0].y) * u };
+  const bottom = { x: corners[3].x + (corners[2].x - corners[3].x) * u, y: corners[3].y + (corners[2].y - corners[3].y) * u };
+  return { x: top.x + (bottom.x - top.x) * v, y: top.y + (bottom.y - top.y) * v };
+}
+
+function drawTriangle(ctx: CanvasRenderingContext2D, img: HTMLImageElement, s1: Point, s2: Point, s3: Point, d1: Point, d2: Point, d3: Point) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(d1.x, d1.y);
+  ctx.lineTo(d2.x, d2.y);
+  ctx.lineTo(d3.x, d3.y);
+  ctx.closePath();
+  ctx.clip();
+
+  const m1 = s1.x * img.width, m2 = s1.y * img.height;
+  const m3 = s2.x * img.width, m4 = s2.y * img.height;
+  const m5 = s3.x * img.width, m6 = s3.y * img.height;
+
+  const n1 = d1.x, n2 = d1.y;
+  const n3 = d2.x, n4 = d2.y;
+  const n5 = d3.x, n6 = d3.y;
+
+  const det = m1 * (m4 - m6) - m2 * (m3 - m5) + (m3 * m6 - m4 * m5);
+  const a = (n1 * (m4 - m6) - m2 * (n3 - n5) + (n3 * m6 - m4 * n5)) / det;
+  const b = (m1 * (n3 - n5) - n1 * (m3 - m5) + (m3 * n5 - n3 * m5)) / det;
+  const c = (m1 * (m4 * n5 - n3 * m6) - m2 * (m3 * n5 - n3 * m5) + n1 * (m3 * m6 - m4 * m5)) / det;
+  const d = (n2 * (m4 - m6) - m2 * (n4 - n6) + (n4 * m6 - m4 * n6)) / det;
+  const e = (m1 * (n4 - n6) - n2 * (m3 - m5) + (m3 * n6 - n4 * m5)) / det;
+  const f = (m1 * (m4 * n6 - n4 * m6) - m2 * (m3 * n6 - n4 * m5) + n2 * (m3 * m6 - m4 * m5)) / det;
+
+  ctx.setTransform(a, d, b, e, c, f);
+  ctx.drawImage(img, 0, 0);
+  ctx.restore();
+}
