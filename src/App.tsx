@@ -118,7 +118,7 @@ export default function App() {
                 className="w-8 h-8 object-contain"
                 referrerPolicy="no-referrer"
               />
-              mew centering
+              center.mew.cards
             </h1>
           </div>
           <button 
@@ -172,7 +172,7 @@ export default function App() {
                   </div>
 
                   <div className="p-4">
-                    <div className="flex flex-col md:flex-row gap-8 items-center md:items-stretch justify-center pb-8 h-[45vh] md:h-[65vh] min-h-[400px] max-h-[750px]">
+                    <div className="flex flex-col md:flex-row gap-8 items-center md:items-stretch justify-center pb-8 h-[50vh] md:h-[75vh] min-h-[500px] max-h-[900px]">
                       {/* Corner Selector */}
                       <div className="flex-1 min-w-0 flex flex-col space-y-2">
                         <div className="flex items-center justify-between">
@@ -208,7 +208,7 @@ export default function App() {
                           )}
                         </div>
                         <div className="flex-1 min-h-0 flex flex-col gap-4">
-                          <div ref={exportRef} className="flex-1 min-h-0 flex flex-col gap-4 bg-[#101010] p-4 rounded-xl border border-white/5">
+                          <div ref={exportRef} className="flex-1 min-h-0 flex flex-col gap-6 bg-[#101010] p-6 rounded-xl border border-white/5">
                             <div className="flex-1 min-h-0">
                               {flattenedImage ? (
                                 <CenteringTool 
@@ -258,7 +258,7 @@ export default function App() {
                                 {/* Branding */}
                                 <div className="flex items-center justify-center gap-2 opacity-30">
                                   <img src="https://mew.cards/img/centerlogo.png" className="w-3 h-3 grayscale" alt="" />
-                                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] lowercase">mew centering</span>
+                                  <span className="text-[8px] font-bold uppercase tracking-[0.2em] lowercase">center.mew.cards</span>
                                 </div>
                               </div>
                             )}
