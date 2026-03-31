@@ -12,12 +12,30 @@ type Step = 'upload' | 'analysis' | 'results';
 export default function App() {
   const [step, setStep] = useState<Step>('upload');
   const [image, setImage] = useState<string | null>(null);
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
   const [corners, setCorners] = useState<Point[]>([
     { x: 0.1, y: 0.1 },
     { x: 0.9, y: 0.1 },
     { x: 0.9, y: 0.9 },
     { x: 0.1, y: 0.9 },
   ]);
+
+  // Pre-load logo as base64 to avoid CORS issues during export
+  React.useEffect(() => {
+    const loadLogo = async () => {
+      try {
+        const response = await fetch('https://mew.cards/img/centerlogo.png');
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onloadend = () => setLogoBase64(reader.result as string);
+        reader.readAsDataURL(blob);
+      } catch (err) {
+        console.warn('Could not pre-load logo due to CORS, will use fallback icon in export');
+      }
+    };
+    loadLogo();
+  }, []);
+
   const [flattenedImage, setFlattenedImage] = useState<string | null>(null);
   const [ratios, setRatios] = useState({ lr: 50, tb: 50 });
   const [filters, setFilters] = useState({ brightness: 0, contrast: 0, saturation: 0 });
@@ -29,10 +47,12 @@ export default function App() {
     setIsSaving(true);
     try {
       // Small delay to ensure any pending renders are finished
-      await new Promise(resolve => setTimeout(resolve, 300));
+      await new Promise(resolve => setTimeout(resolve, 500));
       
-      const { toPng } = await import('html-to-image');
-      const dataUrl = await toPng(exportRef.current, {
+      const { toCanvas } = await import('html-to-image');
+      
+      // Use toCanvas for more control and better error visibility
+      const canvas = await toCanvas(exportRef.current, {
         backgroundColor: '#101010',
         pixelRatio: 2,
         skipAutoScale: true,
@@ -47,13 +67,14 @@ export default function App() {
         }
       });
       
+      const dataUrl = canvas.toDataURL('image/png');
       const link = document.createElement('a');
       link.download = `mew-centering-${Date.now()}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
-      console.error('Failed to save image', err);
-      // Fallback attempt with even lower settings
+      console.error('Save failed:', err);
+      // Fallback attempt with standard quality
       try {
         const { toPng } = await import('html-to-image');
         const dataUrl = await toPng(exportRef.current, {
@@ -66,8 +87,8 @@ export default function App() {
         link.href = dataUrl;
         link.click();
       } catch (err2) {
-        console.error('Fallback failed', err2);
-        alert('Failed to save image. Please try again or take a screenshot.');
+        console.error('Final fallback failed:', err2);
+        alert('Failed to save image. This can happen in some browser environments. Please try taking a screenshot of the results.');
       }
     } finally {
       setIsSaving(false);
@@ -320,12 +341,15 @@ export default function App() {
 
                                 {/* Branding */}
                                 <div className="flex items-center justify-center gap-2 opacity-30">
-                                  <img 
-                                    src="https://mew.cards/img/centerlogo.png" 
-                                    className="w-2.5 h-2.5 grayscale" 
-                                    alt="" 
-                                    referrerPolicy="no-referrer"
-                                  />
+                                  {logoBase64 ? (
+                                    <img 
+                                      src={logoBase64} 
+                                      className="w-2.5 h-2.5 grayscale" 
+                                      alt="" 
+                                    />
+                                  ) : (
+                                    <div className="w-2.5 h-2.5 bg-white/20 rounded-full" />
+                                  )}
                                   <span className="text-[7px] font-bold uppercase tracking-[0.2em] lowercase">center.mew.cards</span>
                                 </div>
                               </div>
