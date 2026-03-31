@@ -11,33 +11,51 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    let active = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
     const img = new Image();
+    img.crossOrigin = "anonymous";
     img.src = image;
+    
     img.onload = () => {
+      if (!active) return;
+      
       const width = 800;
-      const height = width / CARD_RATIO;
+      const height = Math.round(width / CARD_RATIO);
       canvas.width = width;
       canvas.height = height;
 
-      // We need to perform perspective transformation.
-      // Since standard canvas doesn't have a direct 4-point transform,
-      // we'll use a simple approximation or a small math helper.
-      // For now, let's draw it and we'll implement the transform logic.
+      // Ensure clean state
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, width, height);
       
-      // Perspective transform logic (simplified for 2D context)
-      // This is a complex topic, but we can use a library or a manual implementation.
-      // I'll implement a basic one using triangles.
-      
-      drawPerspective(ctx, img, corners, width, height);
-      onFlattened(canvas.toDataURL('image/jpeg', 0.9));
+      try {
+        drawPerspective(ctx, img, corners, width, height);
+        
+        // Use requestAnimationFrame to ensure the drawing is flushed
+        requestAnimationFrame(() => {
+          if (!active) return;
+          try {
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            onFlattened(dataUrl);
+          } catch (e) {
+            console.error('Failed to export flattened image:', e);
+          }
+        });
+      } catch (e) {
+        console.error('Perspective transform failed:', e);
+      }
     };
-  }, [image, corners]);
+
+    return () => {
+      active = false;
+    };
+  }, [image, corners, onFlattened]);
 
   return <canvas ref={canvasRef} className="hidden" />;
 };
@@ -47,7 +65,6 @@ function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, c
   ctx.clearRect(0, 0, targetWidth, targetHeight);
 
   // Use a high-subdivision grid to approximate perspective transformation accurately.
-  // This fixes the issue where it only worked well along one diagonal axis.
   const subdivide = 24;
   for (let y = 0; y < subdivide; y++) {
     for (let x = 0; x < subdivide; x++) {
@@ -65,14 +82,16 @@ function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, c
       drawTriangle(ctx, img, p1, p2, p4, 
         {x: u1 * targetWidth, y: v1 * targetHeight}, 
         {x: u2 * targetWidth, y: v1 * targetHeight}, 
-        {x: u1 * targetWidth, y: v2 * targetHeight}
+        {x: u1 * targetWidth, y: v2 * targetHeight},
+        u1, v1, u2, v2 // Source bounds
       );
       
       // Triangle 2: Top-Right, Bottom-Right, Bottom-Left
       drawTriangle(ctx, img, p2, p3, p4, 
         {x: u2 * targetWidth, y: v1 * targetHeight}, 
         {x: u2 * targetWidth, y: v2 * targetHeight}, 
-        {x: u1 * targetWidth, y: v2 * targetHeight}
+        {x: u1 * targetWidth, y: v2 * targetHeight},
+        u1, v1, u2, v2 // Source bounds
       );
     }
   }
@@ -84,7 +103,13 @@ function interpolate(corners: Point[], u: number, v: number): Point {
   return { x: top.x + (bottom.x - top.x) * v, y: top.y + (bottom.y - top.y) * v };
 }
 
-function drawTriangle(ctx: CanvasRenderingContext2D, img: HTMLImageElement, s1: Point, s2: Point, s3: Point, d1: Point, d2: Point, d3: Point) {
+function drawTriangle(
+  ctx: CanvasRenderingContext2D, 
+  img: HTMLImageElement, 
+  s1: Point, s2: Point, s3: Point, // Source points (normalized)
+  d1: Point, d2: Point, d3: Point, // Destination points (pixels)
+  uMin: number, vMin: number, uMax: number, vMax: number // Source bounds (normalized)
+) {
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(d1.x, d1.y);
@@ -93,16 +118,20 @@ function drawTriangle(ctx: CanvasRenderingContext2D, img: HTMLImageElement, s1: 
   ctx.closePath();
   ctx.clip();
 
-  const m1 = s1.x * img.width, m2 = s1.y * img.height;
-  const m3 = s2.x * img.width, m4 = s2.y * img.height;
-  const m5 = s3.x * img.width, m6 = s3.y * img.height;
+  // Source pixel coordinates
+  const sw = img.width;
+  const sh = img.height;
+  
+  const m1 = s1.x * sw, m2 = s1.y * sh;
+  const m3 = s2.x * sw, m4 = s2.y * sh;
+  const m5 = s3.x * sw, m6 = s3.y * sh;
 
   const n1 = d1.x, n2 = d1.y;
   const n3 = d2.x, n4 = d2.y;
   const n5 = d3.x, n6 = d3.y;
 
   const det = m1 * (m4 - m6) - m2 * (m3 - m5) + (m3 * m6 - m4 * m5);
-  if (Math.abs(det) < 0.1) {
+  if (Math.abs(det) < 0.0001) {
     ctx.restore();
     return;
   }
@@ -115,6 +144,13 @@ function drawTriangle(ctx: CanvasRenderingContext2D, img: HTMLImageElement, s1: 
   const f = (m1 * (m4 * n6 - n4 * m6) - m2 * (m3 * n6 - n4 * m5) + n2 * (m3 * m6 - m4 * m5)) / det;
 
   ctx.setTransform(a, d, b, e, c, f);
-  ctx.drawImage(img, 0, 0);
+  
+  // Draw only the relevant part of the image to save GPU memory and avoid black image issues on mobile
+  const sx = uMin * sw;
+  const sy = vMin * sh;
+  const sWidth = (uMax - uMin) * sw;
+  const sHeight = (vMax - vMin) * sh;
+  
+  ctx.drawImage(img, sx, sy, sWidth, sHeight, sx, sy, sWidth, sHeight);
   ctx.restore();
 }
