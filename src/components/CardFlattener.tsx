@@ -12,6 +12,8 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
 
   useEffect(() => {
     let active = true;
+    let timeoutId: ReturnType<typeof setTimeout>;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -26,31 +28,39 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
     const processImage = () => {
       if (!active) return;
       
-      // Use a slightly smaller target for mobile to ensure compatibility
-      const width = 800;
-      const height = Math.round(width / CARD_RATIO);
-      canvas.width = width;
-      canvas.height = height;
-
-      ctx.fillStyle = 'black';
-      ctx.fillRect(0, 0, width, height);
+      // Debounce the actual processing to keep dragging smooth
+      if (timeoutId) clearTimeout(timeoutId);
       
-      try {
-        // Use 12x12 subdivision (288 triangles) - very safe for mobile but still accurate
-        drawPerspective(ctx, img, corners, width, height, 12);
+      timeoutId = setTimeout(() => {
+        if (!active) return;
         
-        setTimeout(() => {
-          if (!active) return;
-          try {
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-            onFlattened(dataUrl);
-          } catch (e) {
-            console.error('Flattening export error:', e);
-          }
-        }, 100);
-      } catch (e) {
-        console.error('Flattening transform error:', e);
-      }
+        // Use a slightly smaller target for mobile to ensure compatibility
+        const width = 800;
+        const height = Math.round(width / CARD_RATIO);
+        canvas.width = width;
+        canvas.height = height;
+
+        ctx.fillStyle = 'black';
+        ctx.fillRect(0, 0, width, height);
+        
+        try {
+          // Use 12x12 subdivision (288 triangles) - very safe for mobile but still accurate
+          drawPerspective(ctx, img, corners, width, height, 12);
+          
+          // Small delay before export to ensure GPU finish
+          setTimeout(() => {
+            if (!active) return;
+            try {
+              const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+              onFlattened(dataUrl);
+            } catch (e) {
+              console.error('Flattening export error:', e);
+            }
+          }, 50);
+        } catch (e) {
+          console.error('Flattening transform error:', e);
+        }
+      }, 150); // 150ms debounce
     };
 
     img.onload = processImage;
@@ -64,6 +74,7 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
 
     return () => {
       active = false;
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, [image, corners, onFlattened]);
 

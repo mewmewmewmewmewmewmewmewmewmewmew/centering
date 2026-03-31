@@ -128,7 +128,8 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
   }, [draggingIdx, draggingLine, onCornersChange]);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    const el = containerRef.current;
+    if (!el) return;
     
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
@@ -139,9 +140,9 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
       }
     });
     
-    observer.observe(containerRef.current);
+    observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [image]); // Re-run when image changes to ensure ref is captured
 
   const handleMouseDown = (idx: number) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -399,16 +400,21 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
 
               return (
                 <>
-                  <div 
-                    className="absolute w-full h-full"
-                    style={{
-                      backgroundImage: `url(${image})`,
-                      backgroundSize: `${containerSize.width * zoom}px ${containerSize.height * zoom}px`,
-                      backgroundPosition: `${-(focalX * zoom) + targetX}px ${-(focalY * zoom) + targetY}px`,
-                      backgroundRepeat: 'no-repeat',
-                      filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none'
-                    }}
-                  />
+                  <div className="absolute inset-0 overflow-hidden">
+                    <div 
+                      className="absolute top-0 left-0 pointer-events-none"
+                      style={{
+                        width: `${containerSize.width * zoom}px`,
+                        height: `${containerSize.height * zoom}px`,
+                        backgroundImage: `url(${image})`,
+                        backgroundSize: '100% 100%',
+                        backgroundRepeat: 'no-repeat',
+                        transform: `translate(${-(focalX * zoom) + targetX}px, ${-(focalY * zoom) + targetY}px)`,
+                        filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none',
+                        willChange: 'transform'
+                      }}
+                    />
+                  </div>
                   
                   <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${magSize} ${magSize}`}>
                     <g transform={`translate(${targetX}, ${targetY}) scale(${zoom})`}>
