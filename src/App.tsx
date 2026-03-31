@@ -24,7 +24,6 @@ export default function App() {
   React.useEffect(() => {
     const loadLogo = async () => {
       try {
-        // Try to fetch the logo
         const response = await fetch('https://mew.cards/img/centerlogo.png');
         if (!response.ok) throw new Error('Logo fetch failed');
         const blob = await response.blob();
@@ -32,9 +31,8 @@ export default function App() {
         reader.onloadend = () => setLogoBase64(reader.result as string);
         reader.readAsDataURL(blob);
       } catch (err) {
-        console.warn('Could not pre-load logo due to CORS or network error, using fallback');
-        // Fallback to a simple SVG data URL that looks like a card/logo
-        setLogoBase64('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIyMCIgZmlsbD0iI2U2YmJkNCIgZmlsbC1vcGFjaXR5PSIwLjIiLz48cGF0aCBkPSJNMTAgMjhWMTJIMTRMMjAgMjJMMjYgMTJIMzBWMjhIMjZWMThMMjAgMjhMMTQgMThWMjhIMTBaIiBmaWxsPSIjZTZiYmQ0Ii8+PC9zdmc+');
+        console.warn('Could not pre-load logo for export, will use direct URL');
+        setLogoBase64(null);
       }
     };
     loadLogo();
@@ -326,7 +324,6 @@ export default function App() {
                                     src={logoBase64 || "https://mew.cards/img/centerlogo.png"} 
                                     className="w-3 h-3 grayscale" 
                                     alt="" 
-                                    crossOrigin="anonymous"
                                     referrerPolicy="no-referrer"
                                   />
                                   <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-white">center.mew.cards</span>
@@ -336,7 +333,7 @@ export default function App() {
                           </div>
                           
                           {flattenedImage && (
-                            <div className="flex justify-center mt-2">
+                            <div className="hidden md:flex justify-center mt-2">
                               <button 
                                 onClick={handleSaveImage}
                                 disabled={isSaving}
