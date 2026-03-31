@@ -123,7 +123,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, onRatiosCha
     const tbRatio = (topHeight / tbTotal) * 100;
 
   return (
-    <div className="relative h-full w-full flex items-center justify-center overflow-hidden rounded-lg">
+    <div className="relative h-full w-full flex items-center justify-center overflow-visible rounded-lg">
       <div 
         ref={containerRef}
         className="relative h-fit w-fit max-w-full max-h-full aspect-[2.5/3.5] rounded-lg overflow-visible select-none cursor-default transition-transform duration-200"

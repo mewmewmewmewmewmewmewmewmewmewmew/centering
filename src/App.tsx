@@ -24,13 +24,17 @@ export default function App() {
   React.useEffect(() => {
     const loadLogo = async () => {
       try {
+        // Try to fetch the logo
         const response = await fetch('https://mew.cards/img/centerlogo.png');
+        if (!response.ok) throw new Error('Logo fetch failed');
         const blob = await response.blob();
         const reader = new FileReader();
         reader.onloadend = () => setLogoBase64(reader.result as string);
         reader.readAsDataURL(blob);
       } catch (err) {
-        console.warn('Could not pre-load logo due to CORS, will use fallback icon in export');
+        console.warn('Could not pre-load logo due to CORS or network error, using fallback');
+        // Fallback to a simple SVG data URL that looks like a card/logo
+        setLogoBase64('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHJ4PSIyMCIgZmlsbD0iI2U2YmJkNCIgZmlsbC1vcGFjaXR5PSIwLjIiLz48cmVjdCB4PSIxMCIgeT0iOCIgd2lkdGg9IjIwIiBoZWlnaHQ9IjI0IiByeD0iMiIgZmlsbD0iI2U2YmJkNCIvPjxwYXRoIGQ9Ik0xNSAxNEgyNU0xNSAxOEgyNU0xNSAyMkgyMCIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4=');
       }
     };
     loadLogo();
@@ -45,50 +49,72 @@ export default function App() {
   const handleSaveImage = async () => {
     if (!exportRef.current || isSaving) return;
     setIsSaving(true);
+    
     try {
-      // Small delay to ensure any pending renders are finished
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const { toBlob } = await import('html-to-image');
       
-      const { toCanvas } = await import('html-to-image');
+      // Wait for any transitions to settle
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const node = exportRef.current;
       
-      // Use toCanvas for more control and better error visibility
-      const canvas = await toCanvas(exportRef.current, {
-        backgroundColor: '#101010',
-        pixelRatio: 2,
-        skipAutoScale: true,
+      // Get current dimensions to lock them during capture
+      const width = node.clientWidth;
+      const height = node.clientHeight;
+
+      const blob = await toBlob(node, {
+        backgroundColor: '#1a1a1a',
+        pixelRatio: 3,
+        width: width,
+        height: height,
         cacheBust: true,
         style: {
-          padding: '40px',
           borderRadius: '0',
+          transform: 'none',
           margin: '0',
+          padding: '16px', // Standardize padding for export
           display: 'flex',
           flexDirection: 'column',
-          gap: '24px'
+          width: `${width}px`,
+          height: `${height}px`,
+        },
+        filter: (node) => {
+          if (node instanceof HTMLElement) {
+            // Hide the save button container if it's inside the ref
+            return !node.classList.contains('save-button-container');
+          }
+          return true;
         }
       });
-      
-      const dataUrl = canvas.toDataURL('image/png');
+
+      if (!blob) throw new Error('Failed to generate image blob');
+
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.download = `mew-centering-${Date.now()}.png`;
-      link.href = dataUrl;
+      link.href = url;
       link.click();
+      
+      // Cleanup
+      setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (err) {
-      console.error('Save failed:', err);
-      // Fallback attempt with standard quality
+      console.error('Primary save failed:', err);
+      
       try {
         const { toPng } = await import('html-to-image');
-        const dataUrl = await toPng(exportRef.current, {
-          backgroundColor: '#101010',
-          pixelRatio: 1,
+        const dataUrl = await toPng(exportRef.current!, {
+          backgroundColor: '#1a1a1a',
+          pixelRatio: 2,
           cacheBust: true,
         });
+        
         const link = document.createElement('a');
         link.download = `mew-centering-${Date.now()}.png`;
         link.href = dataUrl;
         link.click();
       } catch (err2) {
-        console.error('Final fallback failed:', err2);
-        alert('Failed to save image. This can happen in some browser environments. Please try taking a screenshot of the results.');
+        console.error('All save attempts failed:', err2);
+        alert('Failed to save image. Please try taking a screenshot of the results.');
       }
     } finally {
       setIsSaving(false);
@@ -212,87 +238,76 @@ export default function App() {
                 className="space-y-6"
               >
                 {/* Tools Row */}
-                <div className="bg-white/5 rounded-xl border border-white/10 overflow-hidden">
-                  <div className="p-3 border-b border-white/10 flex items-center justify-between bg-white/5">
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex h-1.5 w-1.5">
-                        <div className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#e6bbd4] opacity-75"></div>
-                        <div className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#e6bbd4]"></div>
-                      </div>
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">Analysis Workspace</span>
+                <div className="flex flex-col md:flex-row gap-8 items-center md:items-stretch justify-center pb-8 h-[50vh] md:h-[75vh] min-h-[500px] max-h-[900px]">
+                  {/* Corner Selector */}
+                  <div className="flex-1 min-w-0 flex flex-col space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-[10px] font-bold uppercase tracking-widest">
+                        <span className="text-[#e6bbd4]">1.</span> <span className="text-white/40">Corners</span>
+                      </h3>
                     </div>
+                    <div className="flex-1 min-h-0 flex flex-col items-center">
+                      <div className="w-fit mx-auto flex flex-col">
+                        <div className="h-fit">
+                          {image && (
+                            <CornerSelector 
+                              image={image} 
+                              corners={corners} 
+                              onCornersChange={setCorners} 
+                              filters={filters}
+                            />
+                          )}
+                        </div>
+                        
+                        {/* Image Controls */}
+                        <div className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-3 mt-[10px] w-full">
+                          <div className="flex items-center gap-3">
+                            <Sun className="w-3 h-3 text-white/40 shrink-0" />
+                            <input 
+                              type="range" min="-100" max="100" value={filters.brightness} 
+                              onChange={(e) => setFilters(f => ({ ...f, brightness: parseInt(e.target.value) }))}
+                              className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
+                            />
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Contrast className="w-3 h-3 text-white/40 shrink-0" />
+                            <input 
+                              type="range" min="-100" max="100" value={filters.contrast} 
+                              onChange={(e) => setFilters(f => ({ ...f, contrast: parseInt(e.target.value) }))}
+                              className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
+                            />
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <Palette className="w-3 h-3 text-white/40 shrink-0" />
+                            <input 
+                              type="range" min="-100" max="100" value={filters.saturation} 
+                              onChange={(e) => setFilters(f => ({ ...f, saturation: parseInt(e.target.value) }))}
+                              className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="h-[18px] mt-2" /> {/* Spacer to align with save link on the right */}
+
+                    <CardFlattener 
+                      image={image!} 
+                      corners={corners} 
+                      onFlattened={setFlattenedImage} 
+                    />
                   </div>
 
-                  <div className="p-4">
-                    <div className="flex flex-col md:flex-row gap-8 items-center md:items-stretch justify-center pb-8 h-[50vh] md:h-[75vh] min-h-[500px] max-h-[900px]">
-                      {/* Corner Selector */}
-                      <div className="flex-1 min-w-0 flex flex-col space-y-2">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-[10px] font-bold uppercase tracking-widest">
-                            <span className="text-[#e6bbd4]">1.</span> <span className="text-white/40">Corners</span>
-                          </h3>
-                        </div>
-                        <div className="flex-1 min-h-0 flex flex-col items-center">
-                          <div className="w-fit mx-auto flex flex-col">
-                            <div className="h-fit">
-                              {image && (
-                                <CornerSelector 
-                                  image={image} 
-                                  corners={corners} 
-                                  onCornersChange={setCorners} 
-                                  filters={filters}
-                                />
-                              )}
-                            </div>
-                            
-                            {/* Image Controls */}
-                            <div className="bg-white/5 p-3 rounded-lg border border-white/5 space-y-3 mt-[10px] w-full">
-                              <div className="flex items-center gap-3">
-                                <Sun className="w-3 h-3 text-white/40 shrink-0" />
-                                <input 
-                                  type="range" min="-100" max="100" value={filters.brightness} 
-                                  onChange={(e) => setFilters(f => ({ ...f, brightness: parseInt(e.target.value) }))}
-                                  className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
-                                />
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <Contrast className="w-3 h-3 text-white/40 shrink-0" />
-                                <input 
-                                  type="range" min="-100" max="100" value={filters.contrast} 
-                                  onChange={(e) => setFilters(f => ({ ...f, contrast: parseInt(e.target.value) }))}
-                                  className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
-                                />
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <Palette className="w-3 h-3 text-white/40 shrink-0" />
-                                <input 
-                                  type="range" min="-100" max="100" value={filters.saturation} 
-                                  onChange={(e) => setFilters(f => ({ ...f, saturation: parseInt(e.target.value) }))}
-                                  className="flex-1 h-1 bg-white/10 rounded-full appearance-none cursor-pointer accent-[#e6bbd4]"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="h-[18px] mt-2" /> {/* Spacer to align with save link on the right */}
-
-                        <CardFlattener 
-                          image={image!} 
-                          corners={corners} 
-                          onFlattened={setFlattenedImage} 
-                        />
+                    <div className="flex-1 min-w-0 flex flex-col space-y-2">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-[10px] font-bold uppercase tracking-widest">
+                          <span className="text-[#e6bbd4]">2.</span> <span className="text-white/40">Centering</span>
+                        </h3>
                       </div>
-
-                        <div className="flex-1 min-w-0 flex flex-col space-y-2">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-bold uppercase tracking-widest">
-                              <span className="text-[#e6bbd4]">2.</span> <span className="text-white/40">Centering</span>
-                            </h3>
-                          </div>
-                          <div className="flex-1 min-h-0 flex flex-col">
-                            <div ref={exportRef} className="flex-1 min-h-0 flex flex-col gap-3 bg-[#101010] pt-4 px-4 pb-1.5 rounded-xl border border-white/5">
-                            <div className="flex-1 min-h-0">
+                      <div className="flex-1 min-h-0 flex flex-col">
+                        <div className="flex-1 min-h-0 flex flex-col">
+                          <div ref={exportRef} className="bg-[#1a1a1a] p-4 rounded-xl border border-white/5 flex flex-col gap-4">
+                            <div className="aspect-[2.5/3.5] w-full">
                               {flattenedImage ? (
                                 <CenteringTool 
                                   image={flattenedImage} 
@@ -301,7 +316,7 @@ export default function App() {
                                 />
                               ) : (
                                 <div className="relative h-full w-full flex items-center justify-center">
-                                  <div className="h-fit w-fit aspect-[2.5/3.5] max-w-full max-h-full bg-white/5 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-white/20 text-[10px] uppercase tracking-widest text-center p-8">
+                                  <div className="h-full w-full aspect-[2.5/3.5] bg-white/5 border border-dashed border-white/10 rounded-lg flex items-center justify-center text-white/20 text-[10px] uppercase tracking-widest text-center p-8">
                                     Adjust corners to load
                                   </div>
                                 </div>
@@ -310,7 +325,7 @@ export default function App() {
 
                             {/* Centering Report Section */}
                             {flattenedImage && (
-                              <div className="space-y-3 pt-2 border-t border-white/5">
+                              <div className="space-y-3 pt-4 border-t border-white/10">
                                 {/* Row 1: Grades */}
                                 <div className="grid grid-cols-3 gap-2">
                                   {(['PSA', 'BGS', 'CGC'] as const).map(company => {
@@ -318,7 +333,7 @@ export default function App() {
                                     const tbGrade = getGrade(ratios.tb, company);
                                     const overall = Math.abs(50 - ratios.lr) > Math.abs(50 - ratios.tb) ? lrGrade : tbGrade;
                                     return (
-                                      <div key={company} className="flex flex-col items-center gap-1 bg-white/5 p-1.5 rounded border border-white/5">
+                                      <div key={company} className="flex flex-col items-center gap-1 bg-white/5 p-2 rounded border border-white/5">
                                         <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest">{company}</span>
                                         <span className={cn("text-lg font-black", overall.color)}>{overall.grade}</span>
                                       </div>
@@ -327,7 +342,7 @@ export default function App() {
                                 </div>
 
                                 {/* Row 2: Centering Ratios */}
-                                <div className="flex items-center justify-around bg-white/5 p-1.5 rounded border border-white/5">
+                                <div className="flex items-center justify-around bg-white/5 p-2 rounded border border-white/5">
                                   <div className="flex flex-col items-center">
                                     <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest mb-0.5">Left / Right</span>
                                     <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.lr.toFixed(1)} : {(100 - ratios.lr).toFixed(1)}</span>
@@ -344,40 +359,39 @@ export default function App() {
                                   {logoBase64 ? (
                                     <img 
                                       src={logoBase64} 
-                                      className="w-2.5 h-2.5 grayscale" 
+                                      className="w-3 h-3 grayscale" 
                                       alt="" 
                                     />
                                   ) : (
-                                    <div className="w-2.5 h-2.5 bg-white/20 rounded-full" />
+                                    <div className="w-3 h-3 bg-white/20 rounded-full" />
                                   )}
-                                  <span className="text-[7px] font-bold uppercase tracking-[0.2em] lowercase">center.mew.cards</span>
+                                  <span className="text-[7px] font-bold uppercase tracking-[0.2em]">center.mew.cards</span>
                                 </div>
                               </div>
                             )}
                           </div>
-                          
-                          {flattenedImage && (
-                            <div className="flex justify-end mt-2">
-                              <button 
-                                onClick={handleSaveImage}
-                                disabled={isSaving}
-                                className={cn(
-                                  "text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5",
-                                  isSaving ? "text-white/20 cursor-wait" : "text-[#e6bbd4] hover:text-[#e6bbd4]/80 active:scale-[0.98]"
-                                )}
-                              >
-                                {isSaving ? (
-                                  "Saving..."
-                                ) : (
-                                  <>
-                                    <Download className="w-3 h-3" /> save image
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          )}
                         </div>
-                      </div>
+                      
+                      {flattenedImage && (
+                        <div className="flex justify-end mt-2">
+                          <button 
+                            onClick={handleSaveImage}
+                            disabled={isSaving}
+                            className={cn(
+                              "text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5",
+                              isSaving ? "text-white/20 cursor-wait" : "text-[#e6bbd4] hover:text-[#e6bbd4]/80 active:scale-[0.98]"
+                            )}
+                          >
+                            {isSaving ? (
+                              "Saving..."
+                            ) : (
+                              <>
+                                <Download className="w-3 h-3" /> save image
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
