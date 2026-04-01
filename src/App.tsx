@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, Layers, RotateCcw, Instagram, Download, Sun, Contrast, Palette } from 'lucide-react';
+import { Upload, Spline, RotateCcw, Instagram, Download, Sun, Contrast, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDropzone } from 'react-dropzone';
 import ReactGA from 'react-ga4';
@@ -9,6 +9,46 @@ import { CenteringTool } from './components/CenteringTool';
 import { Point, cn } from './lib/utils';
 
 type Step = 'upload' | 'analysis' | 'results';
+
+const Curve1Icon = ({ className }: { className?: string }) => (
+  <svg 
+    id="Layer_1" 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="24" 
+    height="24" 
+    viewBox="0 0 24 24"
+    className={className}
+  >
+    <path 
+      d="M2,17c0,.6.4,1,1,1s.4,0,.6-.2c5-3.7,11.8-3.7,16.8,0,.4.3,1.1.2,1.4-.2.1-.2.2-.4.2-.6V7.7c0-1-.9-1.9-1.6-2.4-2.5-1.9-5.4-2.8-8.4-2.8h0c-3,0-5.9.9-8.4,2.8s-1.6,1.4-1.6,2.4v9.3Z" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+const Curve2Icon = ({ className }: { className?: string }) => (
+  <svg 
+    id="Layer_1" 
+    xmlns="http://www.w3.org/2000/svg" 
+    width="24" 
+    height="24" 
+    viewBox="0 0 24 24"
+    className={className}
+  >
+    <path 
+      d="M22,7c0-.6-.4-1-1-1s-.4,0-.6.2c-5,3.7-11.8,3.7-16.8,0-.4-.3-1.1-.2-1.4.2-.1.2-.2.4-.2.6v10c0,.6.4,1,1,1s.4,0,.6-.2c5-3.7,11.8-3.7,16.8,0,.4.3,1.1.2,1.4-.2.1-.2.2-.4.2-.6V7Z" 
+      fill="none" 
+      stroke="currentColor" 
+      strokeWidth="2" 
+      strokeLinecap="round" 
+      strokeLinejoin="round"
+    />
+  </svg>
+);
 
 export default function App() {
   const [step, setStep] = useState<Step>('upload');
@@ -50,7 +90,7 @@ export default function App() {
 
   const [flattenedImage, setFlattenedImage] = useState<string | null>(null);
   const [ratios, setRatios] = useState({ lr: 50, tb: 50 });
-  const [filters, setFilters] = useState({ brightness: 0, contrast: 0, saturation: 0 });
+  const [filters, setFilters] = useState({ brightness: 0, contrast: 0, saturation: 0, curvature: 0, barrelCurvature: 0 });
   const [isSaving, setIsSaving] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
@@ -247,6 +287,13 @@ export default function App() {
               setStep('upload'); 
               setImage(null); 
               setFlattenedImage(null); 
+              setFilters({ brightness: 0, contrast: 0, saturation: 0, curvature: 0, barrelCurvature: 0 });
+              setCorners([
+                { x: 0.1, y: 0.1 },
+                { x: 0.9, y: 0.1 },
+                { x: 0.9, y: 0.9 },
+                { x: 0.1, y: 0.9 },
+              ]);
               ReactGA.event({
                 category: 'Action',
                 action: 'Reset',
@@ -314,12 +361,14 @@ export default function App() {
                         {/* Image Controls */}
                         <div className="p-3 rounded-lg space-y-3 mt-[10px] w-full gloss-box">
                           {[
-                            { icon: Sun, value: filters.brightness, key: 'brightness' },
-                            { icon: Contrast, value: filters.contrast, key: 'contrast' },
-                            { icon: Palette, value: filters.saturation, key: 'saturation' }
-                          ].map(({ icon: Icon, value, key }) => (
+                            { icon: Curve1Icon, value: filters.curvature, key: 'curvature', color: 'text-[#e6bbd4]' },
+                            { icon: Curve2Icon, value: filters.barrelCurvature, key: 'barrelCurvature', color: 'text-[#e6bbd4]' },
+                            { icon: Sun, value: filters.brightness, key: 'brightness', color: 'text-white/60' },
+                            { icon: Contrast, value: filters.contrast, key: 'contrast', color: 'text-white/60' },
+                            { icon: Palette, value: filters.saturation, key: 'saturation', color: 'text-white/60' }
+                          ].map(({ icon: Icon, value, key, color }) => (
                             <div key={key} className="flex items-center gap-3">
-                              <Icon className="w-3 h-3 text-white/60 shrink-0" />
+                              <Icon className={cn("w-3 h-3 shrink-0", color)} />
                               <div className="flex-1 relative flex items-center h-4">
                                 {/* Center Indicator Line - Taller */}
                                 <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[1px] h-5 bg-white/30 pointer-events-none z-0" />
@@ -327,12 +376,16 @@ export default function App() {
                                   type="range" 
                                   min="-100" 
                                   max="100" 
-                                  value={value} 
+                                  value={(key === 'curvature' || key === 'barrelCurvature') ? -value : value} 
                                   onChange={(e) => {
                                     let val = parseInt(e.target.value);
-                                    // Snap to 0 if close
-                                    if (Math.abs(val) < 8) val = 0;
-                                    setFilters(f => ({ ...f, [key]: val }));
+                                    const isCurve = key === 'curvature' || key === 'barrelCurvature';
+                                    // Snap to 0 if close (except for curvature sliders)
+                                    if (!isCurve && Math.abs(val) < 8) val = 0;
+                                    
+                                    // Reverse curvature values internally
+                                    const finalVal = isCurve ? -val : val;
+                                    setFilters(f => ({ ...f, [key]: finalVal }));
                                   }}
                                   className="relative z-10 w-full custom-slider"
                                 />
@@ -349,6 +402,7 @@ export default function App() {
                       image={image!} 
                       corners={corners} 
                       onFlattened={setFlattenedImage} 
+                      filters={filters}
                     />
                   </div>
 
@@ -483,7 +537,7 @@ export default function App() {
           </div>
         </footer>
         <div className="fixed bottom-4 left-4 text-[8px] font-mono text-white/20 uppercase tracking-widest pointer-events-none">
-          v2.6
+          v4.4
         </div>
       </div>
     );

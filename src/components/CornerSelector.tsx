@@ -1,12 +1,12 @@
-// v2.6 - Corner Selector Refinements
-import React, { useState, useRef, useEffect } from 'react';
-import { Point, cn } from '../lib/utils';
+// v4.4 - Corner Selector Curvature Support
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Point, cn, getPerspectiveInterpolation } from '../lib/utils';
 
 interface CornerSelectorProps {
   image: string;
   corners: Point[];
   onCornersChange: (corners: Point[]) => void;
-  filters?: { brightness: number; contrast: number; saturation: number };
+  filters?: { brightness: number; contrast: number; saturation: number; curvature: number; barrelCurvature: number };
 }
 
 export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, onCornersChange, filters }) => {
@@ -249,27 +249,110 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
           viewBox={`0 0 ${containerSize.width} ${containerSize.height}`} 
           preserveAspectRatio="none"
         >
-          <polygon 
-            points={corners.map(p => `${p.x * containerSize.width},${p.y * containerSize.height}`).join(' ')}
-            className={cn(
-              "fill-red-600/5 stroke-red-600 stroke-[2] transition-all",
-              draggingLine ? "stroke-red-600 stroke-[3]" : ""
-            )}
-            strokeDasharray={draggingLine ? "0" : "6 6"}
-          />
-          {/* Crosshairs for each corner */}
-          {corners.map((p, i) => {
-            const neighbors = i === 0 ? [1, 3] :
-                              i === 1 ? [0, 2] :
-                              i === 2 ? [1, 3] : [2, 0];
-            const p0 = corners[i];
-            const p1 = corners[neighbors[0]];
-            const p2 = corners[neighbors[1]];
-            const angle1 = Math.atan2((p1.y - p0.y) * containerSize.height, (p1.x - p0.x) * containerSize.width);
-            const angle2 = Math.atan2((p2.y - p0.y) * containerSize.height, (p2.x - p0.x) * containerSize.width);
+          {/* Perspective Box with Curvature */}
+          {(() => {
+            const p0 = corners[0], p1 = corners[1], p2 = corners[2], p3 = corners[3];
+            const w = containerSize.width, h = containerSize.height;
+            const curv = (filters?.curvature || 0) * 0.001;
+            const bCurv = (filters?.barrelCurvature || 0) * 0.001;
+            
+            // Perspective-correct midpoints
+            const interpolate = getPerspectiveInterpolation(corners);
+            
+            // Top edge (v=0)
+            const topOffset = curv + bCurv;
+            const pTopMid = interpolate(0.5, topOffset);
+            const cpTop = {
+              x: (2 * pTopMid.x - 0.5 * p0.x - 0.5 * p1.x) * w,
+              y: (2 * pTopMid.y - 0.5 * p0.y - 0.5 * p1.y) * h
+            };
+
+            // Bottom edge (v=1)
+            const bottomOffset = curv - bCurv;
+            const pBottomMid = interpolate(0.5, 1 + bottomOffset);
+            const cpBottom = {
+              x: (2 * pBottomMid.x - 0.5 * p2.x - 0.5 * p3.x) * w,
+              y: (2 * pBottomMid.y - 0.5 * p2.y - 0.5 * p3.y) * h
+            };
+
+            const pathData = `
+              M ${p0.x * w},${p0.y * h}
+              Q ${cpTop.x},${cpTop.y} ${p1.x * w},${p1.y * h}
+              L ${p2.x * w},${p2.y * h}
+              Q ${cpBottom.x},${cpBottom.y} ${p3.x * w},${p3.y * h}
+              Z
+            `;
 
             return (
-              <g key={`cross-${i}`} transform={`translate(${p.x * containerSize.width}, ${p.y * containerSize.height})`}>
+              <>
+                <path 
+                  d={pathData}
+                  className={cn(
+                    "fill-red-600/5 stroke-red-600 stroke-[2] transition-all",
+                    draggingLine ? "stroke-red-600 stroke-[3]" : ""
+                  )}
+                  strokeDasharray={draggingLine ? "0" : "6 6"}
+                />
+                
+                {/* Edge Highlights (Curved) */}
+                {(hoverLine || draggingLine) && (() => {
+                  const activeSide = draggingLine || hoverLine;
+                  let d = "";
+                  if (activeSide === 'top') {
+                    d = `M ${p0.x * w},${p0.y * h} Q ${cpTop.x},${cpTop.y} ${p1.x * w},${p1.y * h}`;
+                  } else if (activeSide === 'bottom') {
+                    d = `M ${p2.x * w},${p2.y * h} Q ${cpBottom.x},${cpBottom.y} ${p3.x * w},${p3.y * h}`;
+                  } else if (activeSide === 'right') {
+                    d = `M ${p1.x * w},${p1.y * h} L ${p2.x * w},${p2.y * h}`;
+                  } else if (activeSide === 'left') {
+                    d = `M ${p3.x * w},${p3.y * h} L ${p0.x * w},${p0.y * h}`;
+                  }
+
+                  return (
+                    <path 
+                      d={d}
+                      fill="none"
+                      className="stroke-red-600/40 stroke-[8] transition-all pointer-events-none"
+                    />
+                  );
+                })()}
+              </>
+            );
+          })()}
+          {/* Crosshairs for each corner */}
+          {corners.map((p, i) => {
+            const p0 = corners[0], p1 = corners[1], p2 = corners[2], p3 = corners[3];
+            const w = containerSize.width, h = containerSize.height;
+            const curv = (filters?.curvature || 0) * 0.001;
+            const bCurv = (filters?.barrelCurvature || 0) * 0.001;
+            
+            const interpolate = getPerspectiveInterpolation(corners);
+            const topOffset = curv + bCurv;
+            const bottomOffset = curv - bCurv;
+
+            let angle1 = 0; // Horizontal (curved)
+            let angle2 = 0; // Vertical (straight)
+
+            if (i === 0) {
+              const pNext = interpolate(0.1, topOffset);
+              angle1 = Math.atan2((pNext.y - p0.y) * h, (pNext.x - p0.x) * w);
+              angle2 = Math.atan2((p3.y - p0.y) * h, (p3.x - p0.x) * w);
+            } else if (i === 1) {
+              const pPrev = interpolate(0.9, topOffset);
+              angle1 = Math.atan2((pPrev.y - p1.y) * h, (pPrev.x - p1.x) * w);
+              angle2 = Math.atan2((p2.y - p1.y) * h, (p2.x - p1.x) * w);
+            } else if (i === 2) {
+              const pPrev = interpolate(0.9, 1 + bottomOffset);
+              angle1 = Math.atan2((pPrev.y - p2.y) * h, (pPrev.x - p2.x) * w);
+              angle2 = Math.atan2((p1.y - p2.y) * h, (p1.x - p2.x) * w);
+            } else if (i === 3) {
+              const pNext = interpolate(0.1, 1 + bottomOffset);
+              angle1 = Math.atan2((pNext.y - p3.y) * h, (pNext.x - p3.x) * w);
+              angle2 = Math.atan2((p0.y - p3.y) * h, (p0.x - p3.x) * w);
+            }
+
+            return (
+              <g key={`cross-${i}`} transform={`translate(${p.x * w}, ${p.y * h})`}>
                 {/* Outer crosshair lines (extensions) matching perspective */}
                 <line 
                   x1={Math.cos(angle1 + Math.PI) * 6} 
@@ -328,12 +411,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                 height: '24px',
                 transform: `translate(-50%, -50%) rotate(${angle}rad)`,
               }}
-            >
-              <div className={cn(
-                "absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 bg-red-600/0 transition-all rounded-full",
-                (hoverLine === side || draggingLine === side) && "bg-red-600/40 h-2"
-              )} />
-            </div>
+            />
           );
         })}
 

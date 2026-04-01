@@ -1,4 +1,4 @@
-// v2.6 - Centering Tool Refinements
+// v4.4 - Centering Tool Refinements
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 
@@ -6,7 +6,7 @@ interface CenteringToolProps {
   image: string;
   originalImage: string;
   onRatiosChange: (lr: number, tb: number) => void;
-  filters?: { brightness: number; contrast: number; saturation: number };
+  filters?: { brightness: number; contrast: number; saturation: number; curvature: number };
 }
 
 export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalImage, onRatiosChange, filters }) => {
@@ -240,7 +240,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
           }}
         >
           <img 
-            key={image.substring(0, 50)} // Force re-render when image changes
+            key={image} // Force re-render when image changes
             src={image} 
             className="w-full h-full block pointer-events-none shadow-2xl object-fill" 
             alt="Flattened card" 

@@ -1,4 +1,4 @@
-// v2.6 - Card Flattener Refinements
+// v4.4 - Card Flattener Curvature Support
 import React, { useRef, useEffect } from 'react';
 import { Point, CARD_RATIO, getPerspectiveInterpolation } from '../lib/utils';
 
@@ -6,9 +6,10 @@ interface CardFlattenerProps {
   image: string;
   corners: Point[];
   onFlattened: (dataUrl: string) => void;
+  filters?: { brightness: number; contrast: number; saturation: number; curvature: number; barrelCurvature: number };
 }
 
-export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, onFlattened }) => {
+export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, onFlattened, filters }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -55,7 +56,7 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
         try {
           // Use 48x48 subdivision (4608 triangles) for maximum precision with perspective
           // Note: We don't clear the canvas in drawPerspective anymore to keep the blurred background
-          drawPerspective(ctx, img, corners, width, height, 48);
+          drawPerspective(ctx, img, corners, width, height, 48, filters?.curvature || 0, filters?.barrelCurvature || 0);
           
           // Small delay before export to ensure GPU finish
           setTimeout(() => {
@@ -87,7 +88,7 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
       active = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [image, corners, onFlattened]);
+  }, [image, corners, onFlattened, filters]);
 
   return (
     <canvas 
@@ -105,7 +106,7 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
   );
 };
 
-function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, corners: Point[], targetWidth: number, targetHeight: number, subdivide: number = 16) {
+function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, corners: Point[], targetWidth: number, targetHeight: number, subdivide: number = 16, curvature: number = 0, barrelCurvature: number = 0) {
   // Removed clearRect to preserve blurred background
   
   // Get the perspective-correct interpolation function
@@ -122,6 +123,11 @@ function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, c
   const mx_prime = mx / (1 - 2 * mx);
   const my_prime = my / (1 - 2 * my);
 
+  // Curvature factors
+  // v3.5 - Reversed both signs to match user preference for centering result
+  const c = curvature * 0.001;
+  const c2 = barrelCurvature * 0.001;
+
   for (let y = 0; y < subdivide; y++) {
     for (let x = 0; x < subdivide; x++) {
       const u1 = x / subdivide;
@@ -130,14 +136,24 @@ function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, c
       const v2 = (y + 1) / subdivide;
 
       const mu1 = u1 * (1 + 2 * mx_prime) - mx_prime;
-      const mv1 = v1 * (1 + 2 * my_prime) - my_prime;
       const mu2 = u2 * (1 + 2 * mx_prime) - mx_prime;
-      const mv2 = v2 * (1 + 2 * my_prime) - my_prime;
 
-      const p1 = interpolate(mu1, mv1);
-      const p2 = interpolate(mu2, mv1);
-      const p3 = interpolate(mu2, mv2);
-      const p4 = interpolate(mu1, mv2);
+      // Apply curvature offsets to the vertical mapping
+      // c shifts both edges in same direction, c2 shifts them in opposite directions
+      const getCurv = (u: number, v: number) => {
+        const mu = u * (1 + 2 * mx_prime) - mx_prime;
+        return (c + c2 * (1 - 2 * v)) * 4 * mu * (1 - mu);
+      };
+
+      const mv1_1 = (v1 * (1 + 2 * my_prime) - my_prime) + getCurv(u1, v1);
+      const mv1_2 = (v1 * (1 + 2 * my_prime) - my_prime) + getCurv(u2, v1);
+      const mv2_1 = (v2 * (1 + 2 * my_prime) - my_prime) + getCurv(u1, v2);
+      const mv2_2 = (v2 * (1 + 2 * my_prime) - my_prime) + getCurv(u2, v2);
+
+      const p1 = interpolate(mu1, mv1_1);
+      const p2 = interpolate(mu2, mv1_2);
+      const p3 = interpolate(mu2, mv2_2);
+      const p4 = interpolate(mu1, mv2_1);
 
       drawTriangle(ctx, img, p1, p2, p4, 
         {x: u1 * targetWidth, y: v1 * targetHeight}, 
