@@ -421,6 +421,9 @@ export default function App() {
             </a>
           </div>
         </footer>
+        <div className="fixed bottom-4 left-4 text-[8px] font-mono text-white/20 uppercase tracking-widest pointer-events-none">
+          v2.5
+        </div>
       </div>
     );
 }
