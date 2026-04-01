@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { Upload, Layers, RotateCcw, Instagram, Download, Sun, Contrast, Palette } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDropzone } from 'react-dropzone';
+import ReactGA from 'react-ga4';
 import { CornerSelector } from './components/CornerSelector';
 import { CardFlattener } from './components/CardFlattener';
 import { CenteringTool } from './components/CenteringTool';
@@ -19,6 +20,15 @@ export default function App() {
     { x: 0.9, y: 0.9 },
     { x: 0.1, y: 0.9 },
   ]);
+
+  // Initialize Google Analytics
+  useEffect(() => {
+    const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
+    if (measurementId) {
+      ReactGA.initialize(measurementId);
+      ReactGA.send({ hitType: "pageview", page: window.location.pathname });
+    }
+  }, []);
 
   // Pre-load logo as base64 to avoid CORS issues during export
   React.useEffect(() => {
@@ -75,6 +85,13 @@ export default function App() {
       link.download = `mew-centering-${Date.now()}.png`;
       link.href = dataUrl;
       link.click();
+
+      // Track save event
+      ReactGA.event({
+        category: 'Image',
+        action: 'Save',
+        label: 'Centering Result'
+      });
     } catch (err) {
       console.error('Save failed:', err);
       alert('Failed to save image. Please try taking a screenshot of the results.');
@@ -90,6 +107,13 @@ export default function App() {
     reader.onload = () => {
       setImage(reader.result as string);
       setStep('analysis');
+      
+      // Track upload event
+      ReactGA.event({
+        category: 'Image',
+        action: 'Upload',
+        label: 'Card Image'
+      });
     };
     reader.readAsDataURL(file);
   }, []);
@@ -110,6 +134,13 @@ export default function App() {
           reader.onload = () => {
             setImage(reader.result as string);
             setStep('analysis');
+            
+            // Track paste event
+            ReactGA.event({
+              category: 'Image',
+              action: 'Paste',
+              label: 'Card Image'
+            });
           };
           reader.readAsDataURL(blob);
         }
