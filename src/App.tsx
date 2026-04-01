@@ -23,7 +23,7 @@ export default function App() {
 
   // Initialize Google Analytics
   useEffect(() => {
-    const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID;
+    const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID || 'G-SP0LL2R217';
     if (measurementId) {
       ReactGA.initialize(measurementId);
       ReactGA.send({ hitType: "pageview", page: window.location.pathname });
@@ -193,7 +193,16 @@ export default function App() {
             </h1>
           </div>
           <button 
-            onClick={() => { setStep('upload'); setImage(null); setFlattenedImage(null); }}
+            onClick={() => { 
+              setStep('upload'); 
+              setImage(null); 
+              setFlattenedImage(null); 
+              ReactGA.event({
+                category: 'Action',
+                action: 'Reset',
+                label: 'Centering Tool'
+              });
+            }}
             className="flex items-center gap-2 px-3 py-1.5 bg-white/5 border border-white/10 rounded hover:bg-white/10 transition-colors text-[10px] font-bold uppercase tracking-widest"
           >
             <RotateCcw className="w-3 h-3" /> Reset
