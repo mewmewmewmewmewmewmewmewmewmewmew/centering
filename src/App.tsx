@@ -270,17 +270,18 @@ export default function App() {
                       </div>
                       <div className="flex-1 min-h-0 flex flex-col">
                         <div className="flex-1 min-h-0 flex flex-col">
-                          <div ref={exportRef} className="p-4 pb-2 rounded-[34px] flex flex-col gap-3 gloss-box">
-                            <div className="aspect-[2.5/3.5] w-full">
+                          <div ref={exportRef} className="p-2 pb-2 rounded-[36px] flex flex-col gap-3 gloss-box">
+                            <div className="aspect-[63/88] w-full">
                               {flattenedImage ? (
                                 <CenteringTool 
                                   image={flattenedImage} 
+                                  originalImage={image!}
                                   onRatiosChange={(lr, tb) => setRatios({ lr, tb })} 
                                   filters={filters}
                                 />
                               ) : (
                                 <div className="relative h-full w-full flex items-center justify-center">
-                                  <div className="h-full w-full aspect-[2.5/3.5] bg-white/5 border border-dashed border-white/10 rounded-[18px] flex items-center justify-center text-white/40 text-[10px] uppercase tracking-widest text-center p-8">
+                                  <div className="h-full w-full aspect-[63/88] bg-white/5 border border-dashed border-white/10 rounded-[24px] flex items-center justify-center text-white/40 text-[10px] uppercase tracking-widest text-center p-8">
                                     Adjust corners to load
                                   </div>
                                 </div>
@@ -306,7 +307,7 @@ export default function App() {
                                 </div>
 
                                 {/* Row 2: Centering Ratios */}
-                                <div className="flex items-center justify-around p-2 rounded-t-[8px] rounded-b-[18px] gloss-box">
+                                <div className="flex items-center justify-around p-2 rounded-[12px] gloss-box">
                                   <div className="flex flex-col items-center">
                                     <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest mb-0.5">Left / Right</span>
                                     <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.lr.toFixed(1)} : {(100 - ratios.lr).toFixed(1)}</span>

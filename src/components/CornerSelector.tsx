@@ -227,7 +227,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
     <div className="relative flex flex-col items-center overflow-hidden p-0">
       <div 
         ref={containerRef}
-        className="relative bg-black/20 rounded-lg overflow-visible cursor-crosshair select-none shadow-2xl w-fit h-fit gloss-box"
+        className="relative overflow-visible cursor-crosshair select-none w-fit h-fit"
         onMouseMove={handleMouseMove}
         style={{
           aspectRatio: imgSize.width && imgSize.height ? `${imgSize.width} / ${imgSize.height}` : 'auto',
@@ -237,7 +237,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
       >
         <img 
           src={image} 
-          className="w-full h-full block rounded-lg pointer-events-none object-contain" 
+          className="w-full h-full block pointer-events-none object-contain" 
           alt="Card to analyze" 
           style={{
             filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none'
@@ -371,7 +371,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
               width: isMobile ? '140px' : '180px',
               height: isMobile ? '140px' : '180px',
               left: `${Math.max(isMobile ? 70 : 90, Math.min(containerSize.width - (isMobile ? 70 : 90), corners[draggingIdx].x * containerSize.width))}px`,
-              top: `${Math.max(isMobile ? 70 : 90, Math.min(containerSize.height - (isMobile ? 70 : 90), (corners[draggingIdx].y * containerSize.height) - (isMobile ? 100 : 120)))}px`,
+              top: `${Math.max(isMobile ? 70 : 90, Math.min(containerSize.height - (isMobile ? 70 : 90), (corners[draggingIdx].y * containerSize.height) + (draggingIdx < 2 ? (isMobile ? 100 : 120) : -(isMobile ? 100 : 120))))}px`,
               transform: 'translate(-50%, -50%)',
             }}
           >

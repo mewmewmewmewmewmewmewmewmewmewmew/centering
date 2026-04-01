@@ -10,15 +10,49 @@ export interface Point {
   y: number;
 }
 
-export function getPerspectiveTransform(src: Point[], width: number, height: number) {
-  // Simple perspective transform math
-  // For a more robust solution, we'd use a full matrix, but for 4 points to a rectangle:
-  // We'll use a basic implementation or just return the points for the canvas to use.
-  // Actually, implementing perspective transform in JS without a library is tricky.
-  // I'll use a CSS transform approach for the preview if possible, 
-  // or a canvas-based drawImage with 4 points if I can find a snippet.
-  
-  // Since we want to "flatten" the card, we'll use a canvas to draw the transformed image.
-}
+export const CARD_RATIO = 63 / 88; // Standard trading card ratio (63x88mm)
 
-export const CARD_RATIO = 2.5 / 3.5; // Standard trading card ratio
+export function getPerspectiveInterpolation(corners: Point[]) {
+  const x0 = corners[0].x, y0 = corners[0].y;
+  const x1 = corners[1].x, y1 = corners[1].y;
+  const x2 = corners[2].x, y2 = corners[2].y;
+  const x3 = corners[3].x, y3 = corners[3].y;
+
+  const dx1 = x1 - x2;
+  const dx2 = x3 - x2;
+  const sx = x0 - x1 + x2 - x3;
+  const dy1 = y1 - y2;
+  const dy2 = y3 - y2;
+  const sy = y0 - y1 + y2 - y3;
+
+  let h0, h1, h2, h3, h4, h5, h6, h7;
+
+  if (sx === 0 && sy === 0) {
+    h0 = x1 - x0;
+    h1 = x2 - x1;
+    h2 = x0;
+    h3 = y1 - y0;
+    h4 = y2 - y1;
+    h5 = y0;
+    h6 = 0;
+    h7 = 0;
+  } else {
+    const det = dx1 * dy2 - dx2 * dy1;
+    h6 = (sx * dy2 - dx2 * sy) / det;
+    h7 = (dx1 * sy - sx * dy1) / det;
+    h0 = x1 - x0 + h6 * x1;
+    h1 = x3 - x0 + h7 * x3;
+    h2 = x0;
+    h3 = y1 - y0 + h6 * y1;
+    h4 = y3 - y0 + h7 * y3;
+    h5 = y0;
+  }
+
+  return (u: number, v: number): Point => {
+    const den = h6 * u + h7 * v + 1;
+    return {
+      x: (h0 * u + h1 * v + h2) / den,
+      y: (h3 * u + h4 * v + h5) / den
+    };
+  };
+}

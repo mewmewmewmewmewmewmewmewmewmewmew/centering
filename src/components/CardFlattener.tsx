@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState } from 'react';
-import { Point, CARD_RATIO } from '../lib/utils';
+import React, { useRef, useEffect } from 'react';
+import { Point, CARD_RATIO, getPerspectiveInterpolation } from '../lib/utils';
 
 interface CardFlattenerProps {
   image: string;
@@ -34,33 +34,43 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
       timeoutId = setTimeout(() => {
         if (!active) return;
         
-        // Use a slightly smaller target for mobile to ensure compatibility
-        const width = 800;
-        const height = Math.round(width / CARD_RATIO);
+        // Use a high-resolution size that exactly matches 63:88 ratio
+        // 1260x1760 is 20x the base 63x88 units
+        const width = 1260; 
+        const height = 1760;
         canvas.width = width;
         canvas.height = height;
 
+        // Draw blurred background first for dead space
+        ctx.save();
         ctx.fillStyle = 'black';
         ctx.fillRect(0, 0, width, height);
+        ctx.filter = 'blur(60px)';
+        ctx.globalAlpha = 0.6;
+        // Draw image slightly larger to cover edges
+        ctx.drawImage(img, -width * 0.15, -height * 0.15, width * 1.3, height * 1.3);
+        ctx.restore();
         
         try {
-          // Use 12x12 subdivision (288 triangles) - very safe for mobile but still accurate
-          drawPerspective(ctx, img, corners, width, height, 12);
+          // Use 48x48 subdivision (4608 triangles) for maximum precision with perspective
+          // Note: We don't clear the canvas in drawPerspective anymore to keep the blurred background
+          drawPerspective(ctx, img, corners, width, height, 48);
           
           // Small delay before export to ensure GPU finish
           setTimeout(() => {
             if (!active) return;
             try {
-              const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+              // Use PNG for lossless precision as every pixel matters
+              const dataUrl = canvas.toDataURL('image/png');
               onFlattened(dataUrl);
             } catch (e) {
               console.error('Flattening export error:', e);
             }
-          }, 50);
+          }, 100);
         } catch (e) {
           console.error('Flattening transform error:', e);
         }
-      }, 150); // 150ms debounce
+      }, 200); // 200ms debounce for high-res processing
     };
 
     img.onload = processImage;
@@ -95,7 +105,21 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
 };
 
 function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, corners: Point[], targetWidth: number, targetHeight: number, subdivide: number = 16) {
-  ctx.clearRect(0, 0, targetWidth, targetHeight);
+  // Removed clearRect to preserve blurred background
+  
+  // Get the perspective-correct interpolation function
+  const interpolate = getPerspectiveInterpolation(corners);
+
+  // Add a margin around the card to show context.
+  // We want equal pixel thickness on all sides.
+  // We use 2% of width as the base margin.
+  const mx = 0.02;
+  const my = (targetWidth * 0.02) / targetHeight;
+
+  // We need to map target [0, 1] to source [-mx', 1+mx']
+  // such that target [mx, 1-mx] maps to source [0, 1]
+  const mx_prime = mx / (1 - 2 * mx);
+  const my_prime = my / (1 - 2 * my);
 
   for (let y = 0; y < subdivide; y++) {
     for (let x = 0; x < subdivide; x++) {
@@ -104,10 +128,15 @@ function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, c
       const u2 = (x + 1) / subdivide;
       const v2 = (y + 1) / subdivide;
 
-      const p1 = interpolate(corners, u1, v1);
-      const p2 = interpolate(corners, u2, v1);
-      const p3 = interpolate(corners, u2, v2);
-      const p4 = interpolate(corners, u1, v2);
+      const mu1 = u1 * (1 + 2 * mx_prime) - mx_prime;
+      const mv1 = v1 * (1 + 2 * my_prime) - my_prime;
+      const mu2 = u2 * (1 + 2 * mx_prime) - mx_prime;
+      const mv2 = v2 * (1 + 2 * my_prime) - my_prime;
+
+      const p1 = interpolate(mu1, mv1);
+      const p2 = interpolate(mu2, mv1);
+      const p3 = interpolate(mu2, mv2);
+      const p4 = interpolate(mu1, mv2);
 
       drawTriangle(ctx, img, p1, p2, p4, 
         {x: u1 * targetWidth, y: v1 * targetHeight}, 
@@ -122,12 +151,6 @@ function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, c
       );
     }
   }
-}
-
-function interpolate(corners: Point[], u: number, v: number): Point {
-  const top = { x: corners[0].x + (corners[1].x - corners[0].x) * u, y: corners[0].y + (corners[1].y - corners[0].y) * u };
-  const bottom = { x: corners[3].x + (corners[2].x - corners[3].x) * u, y: corners[3].y + (corners[2].y - corners[3].y) * u };
-  return { x: top.x + (bottom.x - top.x) * v, y: top.y + (bottom.y - top.y) * v };
 }
 
 function drawTriangle(
