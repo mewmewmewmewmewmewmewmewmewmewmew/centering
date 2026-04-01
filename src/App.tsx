@@ -422,7 +422,7 @@ export default function App() {
           </div>
         </footer>
         <div className="fixed bottom-4 left-4 text-[8px] font-mono text-white/20 uppercase tracking-widest pointer-events-none">
-          v2.5
+          v2.6
         </div>
       </div>
     );

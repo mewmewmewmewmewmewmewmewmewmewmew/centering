@@ -1,3 +1,4 @@
+// v2.6 - Centering Tool Refinements
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 
@@ -298,7 +299,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
               fill="none"
               stroke="#dc2626" // red-600
               strokeWidth="1"
-              style={{ mixBlendMode: 'difference' }}
               className="transition-all duration-200"
             />
           </svg>
@@ -335,7 +335,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
                     isVertical ? "left-1/2 h-full -translate-x-1/2" : "top-1/2 w-full -translate-y-1/2"
                   )} 
                   style={{
-                    mixBlendMode: 'difference',
                     width: isVertical ? (dragging ? '1px' : '2px') : '100%',
                     height: isVertical ? '100%' : (dragging ? '1px' : '2px'),
                     transform: isVertical 
@@ -352,7 +351,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
                     isDragging && "opacity-100 shadow-[0_0_10px_rgba(220,38,38,0.6)]"
                   )}
                   style={{
-                    mixBlendMode: 'difference',
                     [isVertical ? 'top' : 'left']: isVertical 
                       ? `${((mousePos.y - (containerRef.current?.getBoundingClientRect().top || 0)) / (containerSize.height || 1)) * 100}%`
                       : `${((mousePos.x - (containerRef.current?.getBoundingClientRect().left || 0)) / (containerSize.width || 1)) * 100}%`,

@@ -1,3 +1,4 @@
+// v2.6 - Corner Selector Refinements
 import React, { useState, useRef, useEffect } from 'react';
 import { Point, cn } from '../lib/utils';
 
@@ -255,7 +256,6 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
               "fill-red-600/5 stroke-red-600 stroke-[2] transition-all",
               draggingLine ? "stroke-red-600 stroke-[3]" : ""
             )}
-            style={{ mixBlendMode: 'difference' }}
             strokeDasharray={draggingLine ? "0" : "6 6"}
           />
           {/* Crosshairs for each corner */}
@@ -278,7 +278,6 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                   x2={Math.cos(angle1 + Math.PI) * 30} 
                   y2={Math.sin(angle1 + Math.PI) * 30} 
                   className="stroke-white/50 stroke-[2]" 
-                  style={{ mixBlendMode: 'difference' }}
                 />
                 <line 
                   x1={Math.cos(angle2 + Math.PI) * 6} 
@@ -286,19 +285,17 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                   x2={Math.cos(angle2 + Math.PI) * 30} 
                   y2={Math.sin(angle2 + Math.PI) * 30} 
                   className="stroke-white/50 stroke-[2]" 
-                  style={{ mixBlendMode: 'difference' }}
                 />
                 
-                <circle cx="0" cy="0" r="2.5" className="fill-red-600" style={{ mixBlendMode: 'difference' }} />
+                <circle cx="0" cy="0" r="2.5" className="fill-red-600" />
                 <path 
                   d={getCornerPath(i, r)} 
                   fill="none" 
                   className="stroke-red-600 stroke-[4]" 
-                  style={{ mixBlendMode: 'difference' }}
                 />
                 {/* Theoretical sharp corner lines following actual perspective */}
-                <line x1={0} y1={0} x2={Math.cos(angle1) * 60} y2={Math.sin(angle1) * 60} className="stroke-red-600/30 stroke-[2]" style={{ mixBlendMode: 'difference' }} />
-                <line x1={0} y1={0} x2={Math.cos(angle2) * 60} y2={Math.sin(angle2) * 60} className="stroke-red-600/30 stroke-[2]" style={{ mixBlendMode: 'difference' }} />
+                <line x1={0} y1={0} x2={Math.cos(angle1) * 60} y2={Math.sin(angle1) * 60} className="stroke-red-600/30 stroke-[2]" />
+                <line x1={0} y1={0} x2={Math.cos(angle2) * 60} y2={Math.sin(angle2) * 60} className="stroke-red-600/30 stroke-[2]" />
               </g>
             );
           })}
@@ -431,7 +428,6 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                         className="stroke-white/50" 
                         strokeWidth="0.5" 
                         vectorEffect="non-scaling-stroke" 
-                        style={{ mixBlendMode: 'difference' }}
                       />
                       <line 
                         x1={Math.cos(angle2 + Math.PI) * 30} 
@@ -441,20 +437,19 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                         className="stroke-white/50" 
                         strokeWidth="0.5" 
                         vectorEffect="non-scaling-stroke" 
-                        style={{ mixBlendMode: 'difference' }}
                       />
-                      <circle cx="0" cy="0" r="2" className="fill-red-600" style={{ mixBlendMode: 'difference' }} />
+                      <circle cx="0" cy="0" r="2" className="fill-red-600" />
                       
                       {/* Rounded corner guide */}
-                      <path d={getCornerPath(draggingIdx, r)} fill="none" className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" style={{ mixBlendMode: 'difference' }} />
+                      <path d={getCornerPath(draggingIdx, r)} fill="none" className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
                       
                       {/* Dynamic edge lines reflecting actual perspective */}
-                      <line x1={0} y1={0} x2={Math.cos(angle1) * 60} y2={Math.sin(angle1) * 60} className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" style={{ mixBlendMode: 'difference' }} />
-                      <line x1={0} y1={0} x2={Math.cos(angle2) * 60} y2={Math.sin(angle2) * 60} className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" style={{ mixBlendMode: 'difference' }} />
+                      <line x1={0} y1={0} x2={Math.cos(angle1) * 60} y2={Math.sin(angle1) * 60} className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                      <line x1={0} y1={0} x2={Math.cos(angle2) * 60} y2={Math.sin(angle2) * 60} className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
                       
                       {/* Faint extension lines */}
-                      <line x1={0} y1={0} x2={Math.cos(angle1) * 120} y2={Math.sin(angle1) * 120} className="stroke-red-600/20" strokeWidth="1" vectorEffect="non-scaling-stroke" style={{ mixBlendMode: 'difference' }} />
-                      <line x1={0} y1={0} x2={Math.cos(angle2) * 120} y2={Math.sin(angle2) * 120} className="stroke-red-600/20" strokeWidth="1" vectorEffect="non-scaling-stroke" style={{ mixBlendMode: 'difference' }} />
+                      <line x1={0} y1={0} x2={Math.cos(angle1) * 120} y2={Math.sin(angle1) * 120} className="stroke-red-600/20" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                      <line x1={0} y1={0} x2={Math.cos(angle2) * 120} y2={Math.sin(angle2) * 120} className="stroke-red-600/20" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                     </g>
                   </svg>
                 </>
