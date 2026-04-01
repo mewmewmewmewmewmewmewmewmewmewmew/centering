@@ -426,7 +426,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                         x2={Math.cos(angle1) * 30} 
                         y2={Math.sin(angle1) * 30} 
                         className="stroke-white/50" 
-                        strokeWidth="0.5" 
+                        strokeWidth="1" 
                         vectorEffect="non-scaling-stroke" 
                       />
                       <line 
@@ -435,17 +435,17 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                         x2={Math.cos(angle2) * 30} 
                         y2={Math.sin(angle2) * 30} 
                         className="stroke-white/50" 
-                        strokeWidth="0.5" 
+                        strokeWidth="1" 
                         vectorEffect="non-scaling-stroke" 
                       />
                       <circle cx="0" cy="0" r="2" className="fill-red-600" />
                       
                       {/* Rounded corner guide */}
-                      <path d={getCornerPath(draggingIdx, r)} fill="none" className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                      <path d={getCornerPath(draggingIdx, r)} fill="none" className="stroke-red-600" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                       
                       {/* Dynamic edge lines reflecting actual perspective */}
-                      <line x1={0} y1={0} x2={Math.cos(angle1) * 60} y2={Math.sin(angle1) * 60} className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
-                      <line x1={0} y1={0} x2={Math.cos(angle2) * 60} y2={Math.sin(angle2) * 60} className="stroke-red-600" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+                      <line x1={0} y1={0} x2={Math.cos(angle1) * 60} y2={Math.sin(angle1) * 60} className="stroke-red-600" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                      <line x1={0} y1={0} x2={Math.cos(angle2) * 60} y2={Math.sin(angle2) * 60} className="stroke-red-600" strokeWidth="1" vectorEffect="non-scaling-stroke" />
                       
                       {/* Faint extension lines */}
                       <line x1={0} y1={0} x2={Math.cos(angle1) * 120} y2={Math.sin(angle1) * 120} className="stroke-red-600/20" strokeWidth="1" vectorEffect="non-scaling-stroke" />
