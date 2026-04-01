@@ -327,7 +327,7 @@ export default function App() {
                                     alt="" 
                                     referrerPolicy="no-referrer"
                                   />
-                                  <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-white">center.mew.cards</span>
+                                  <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-white">centering.mew.cards</span>
                                 </div>
                               </div>
                             )}
