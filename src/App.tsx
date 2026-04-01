@@ -58,15 +58,29 @@ export default function App() {
     if (!exportRef.current || isSaving) return;
     setIsSaving(true);
     
+    const node = exportRef.current;
+    const glossBoxes = node.querySelectorAll('.gloss-box');
+    const originalFilters = new Map<Element, string>();
+    
     try {
-      const { toPng } = await import('html-to-image');
+      const { toBlob } = await import('html-to-image');
       
-      // Wait for any transitions to settle
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Temporarily disable backdrop-filter as it often breaks html-to-image
+      originalFilters.set(node, node.style.backdropFilter);
+      node.style.backdropFilter = 'none';
+      
+      glossBoxes.forEach(box => {
+        if (box instanceof HTMLElement) {
+          originalFilters.set(box, box.style.backdropFilter);
+          box.style.backdropFilter = 'none';
+        }
+      });
+      
+      // Wait for any transitions to settle and for the style change to apply
+      await new Promise(resolve => setTimeout(resolve, 600));
 
-      const node = exportRef.current;
-      
-      const dataUrl = await toPng(node, {
+      // Try to generate the image
+      const blob = await toBlob(node, {
         backgroundColor: '#1a1a1a',
         pixelRatio: 2,
         cacheBust: true,
@@ -74,17 +88,22 @@ export default function App() {
           borderRadius: '0',
           transform: 'none',
           margin: '0',
+          backdropFilter: 'none'
         }
       });
 
-      if (!dataUrl || dataUrl === 'data:,') {
-        throw new Error('Generated image is empty');
+      if (!blob || blob.size < 100) {
+        throw new Error('Generated image is empty or too small');
       }
 
+      const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.download = `mew-centering-${Date.now()}.png`;
-      link.href = dataUrl;
+      link.href = url;
       link.click();
+      
+      // Clean up the URL
+      setTimeout(() => URL.revokeObjectURL(url), 100);
 
       // Track save event
       ReactGA.event({
@@ -94,8 +113,39 @@ export default function App() {
       });
     } catch (err) {
       console.error('Save failed:', err);
+      // If it fails, try one more time without pixelRatio
+      try {
+        const { toBlob } = await import('html-to-image');
+        const blob = await toBlob(node, {
+          backgroundColor: '#1a1a1a',
+          cacheBust: true,
+          style: {
+            borderRadius: '0',
+            transform: 'none',
+            margin: '0',
+            backdropFilter: 'none'
+          }
+        });
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.download = `mew-centering-${Date.now()}.png`;
+          link.href = url;
+          link.click();
+          setTimeout(() => URL.revokeObjectURL(url), 100);
+          return;
+        }
+      } catch (innerErr) {
+        console.error('Fallback save also failed:', innerErr);
+      }
       alert('Failed to save image. Please try taking a screenshot of the results.');
     } finally {
+      // Restore original styles
+      originalFilters.forEach((filter, element) => {
+        if (element instanceof HTMLElement) {
+          element.style.backdropFilter = filter;
+        }
+      });
       setIsSaving(false);
     }
   };
@@ -361,12 +411,14 @@ export default function App() {
 
                                  {/* Branding */}
                                 <div className="flex items-center justify-center gap-2 opacity-60 pb-1">
-                                  <img 
-                                    src={logoBase64 || "https://mew.cards/img/centerlogo.png"} 
-                                    className="w-3 h-3 grayscale" 
-                                    alt="" 
-                                    referrerPolicy="no-referrer"
-                                  />
+                                  {logoBase64 && (
+                                    <img 
+                                      src={logoBase64} 
+                                      className="w-3 h-3 grayscale" 
+                                      alt="" 
+                                      referrerPolicy="no-referrer"
+                                    />
+                                  )}
                                   <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-white">centering.mew.cards</span>
                                 </div>
                               </div>
