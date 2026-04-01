@@ -225,14 +225,13 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
   const r = getDynamicRadius();
 
   return (
-    <div className="relative flex flex-col items-center overflow-hidden p-0">
+    <div className="relative flex flex-col items-center overflow-visible p-0">
       <div 
         ref={containerRef}
         className="relative overflow-visible cursor-crosshair select-none w-fit h-fit"
         onMouseMove={handleMouseMove}
         style={{
           aspectRatio: imgSize.width && imgSize.height ? `${imgSize.width} / ${imgSize.height}` : 'auto',
-          maxHeight: '70vh',
           maxWidth: '100%',
         }}
       >

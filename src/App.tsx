@@ -290,15 +290,15 @@ export default function App() {
                 className="space-y-6"
               >
                 {/* Tools Row */}
-                <div className="flex flex-col md:flex-row gap-8 items-center md:items-stretch justify-center md:h-[75vh] md:min-h-[500px] md:max-h-[900px]">
+                <div className="flex flex-col md:flex-row gap-8 items-center md:items-start justify-center">
                   {/* Corner Selector */}
-                  <div className="w-full md:flex-1 min-w-0 flex flex-col space-y-2">
+                  <div className="w-full md:flex-1 min-w-0 flex flex-col space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-[10px] font-bold uppercase tracking-widest">
                         <span className="text-[#e6bbd4]">1.</span> <span className="text-white/60">Corners</span>
                       </h3>
                     </div>
-                    <div className="flex-1 min-h-0 flex flex-col items-center">
+                    <div className="flex flex-col items-center">
                       <div className="w-fit mx-auto flex flex-col">
                         <div className="h-fit">
                           {image && (
@@ -352,14 +352,14 @@ export default function App() {
                     />
                   </div>
 
-                    <div className="w-full md:flex-1 min-w-0 flex flex-col space-y-2">
+                    <div className="w-full md:flex-1 min-w-0 flex flex-col space-y-4">
                       <div className="flex items-center justify-between">
                         <h3 className="text-[10px] font-bold uppercase tracking-widest">
                           <span className="text-[#e6bbd4]">2.</span> <span className="text-white/60">Centering</span>
                         </h3>
                       </div>
-                      <div className="flex-1 min-h-0 flex flex-col">
-                        <div className="flex-1 min-h-0 flex flex-col">
+                      <div className="flex flex-col">
+                        <div className="flex flex-col">
                           <div ref={exportRef} className="p-2 pb-2 rounded-[36px] flex flex-col gap-3 gloss-box">
                             <div className="aspect-[63/88] w-full">
                               {flattenedImage ? (
