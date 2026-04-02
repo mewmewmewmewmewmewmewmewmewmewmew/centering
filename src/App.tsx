@@ -89,6 +89,7 @@ export default function App() {
   }, []);
 
   const [flattenedImage, setFlattenedImage] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [ratios, setRatios] = useState({ lr: 50, tb: 50 });
   const [filters, setFilters] = useState({ brightness: 0, contrast: 0, saturation: 0, curvature: 0, barrelCurvature: 0 });
   const [isSaving, setIsSaving] = useState(false);
@@ -353,6 +354,7 @@ export default function App() {
                               image={image} 
                               corners={corners} 
                               onCornersChange={setCorners} 
+                              onDraggingChange={setIsDragging}
                               filters={filters}
                             />
                           )}
@@ -403,6 +405,7 @@ export default function App() {
                       corners={corners} 
                       onFlattened={setFlattenedImage} 
                       filters={filters}
+                      isDragging={isDragging}
                     />
                   </div>
 
@@ -537,7 +540,7 @@ export default function App() {
           </div>
         </footer>
         <div className="fixed bottom-4 left-4 text-[8px] font-mono text-white/20 uppercase tracking-widest pointer-events-none">
-          v4.4
+          v4.7
         </div>
       </div>
     );

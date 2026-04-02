@@ -1,4 +1,4 @@
-// v4.4 - Corner Selector Curvature Support
+// v4.7 - Corner Selector Curvature Support + Proxy Canvas Zoom + Mobile Optimizations
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Point, cn, getPerspectiveInterpolation } from '../lib/utils';
 
@@ -6,35 +6,79 @@ interface CornerSelectorProps {
   image: string;
   corners: Point[];
   onCornersChange: (corners: Point[]) => void;
+  onDraggingChange?: (isDragging: boolean) => void;
   filters?: { brightness: number; contrast: number; saturation: number; curvature: number; barrelCurvature: number };
 }
 
-export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, onCornersChange, filters }) => {
+export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, onCornersChange, onDraggingChange, filters }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null);
   const [draggingLine, setDraggingLine] = useState<string | null>(null);
   const [hoverLine, setHoverLine] = useState<string | null>(null);
-
-  useEffect(() => {
-    const img = new Image();
-    img.src = image;
-    img.onload = () => {
-      setImgSize({ width: img.width, height: img.height });
-    };
-  }, [image]);
-
+  const [isDragging, setIsDragging] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  const cornersRef = useRef(corners);
-  const rectRef = useRef<DOMRect | null>(null);
-  const startDragPos = useRef({ x: 0, y: 0 });
-  const startCorners = useRef<Point[]>([]);
+  const zoomCanvasRef = useRef<HTMLCanvasElement>(null);
+  const sourceImageRef = useRef<HTMLImageElement | null>(null);
 
   useEffect(() => {
     setIsMobile(window.matchMedia('(max-width: 768px)').matches);
   }, []);
+
+  useEffect(() => {
+    const img = new Image();
+    if (image.startsWith('http')) {
+      img.crossOrigin = "anonymous";
+    }
+    img.src = image;
+    img.onload = () => {
+      sourceImageRef.current = img;
+      setImgSize({ width: img.width, height: img.height });
+    };
+  }, [image]);
+
+  useEffect(() => {
+    if (draggingIdx === null || !sourceImageRef.current || !zoomCanvasRef.current || !imgSize.width || !containerSize.width) return;
+    
+    const canvas = zoomCanvasRef.current;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) return;
+
+    const magSize = isMobile ? 140 : 180;
+    
+    // v4.6 - Fix zoom level to match v4.4 behavior
+    // The previous zoom was 4x relative to the container size.
+    // We calculate the source width in original image pixels that corresponds to this.
+    const zoomFactor = 4;
+    const sw = (magSize / (containerSize.width * zoomFactor)) * imgSize.width;
+    const sh = (magSize / (containerSize.height * zoomFactor)) * imgSize.height;
+
+    if (canvas.width !== magSize) {
+      canvas.width = magSize;
+      canvas.height = magSize;
+    }
+
+    const p = corners[draggingIdx];
+    const focalX = p.x * imgSize.width;
+    const focalY = p.y * imgSize.height;
+
+    const targetX = draggingIdx === 0 || draggingIdx === 3 ? (magSize / 3) : (magSize * 2 / 3);
+    const targetY = draggingIdx === 0 || draggingIdx === 1 ? (magSize / 3) : (magSize * 2 / 3);
+
+    const sx = focalX - (targetX / magSize) * sw;
+    const sy = focalY - (targetY / magSize) * sh;
+
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, magSize, magSize);
+    ctx.drawImage(sourceImageRef.current, sx, sy, sw, sh, 0, 0, magSize, magSize);
+  }, [draggingIdx, corners, imgSize, isMobile, containerSize]);
+
+  const cornersRef = useRef(corners);
+  const rectRef = useRef<DOMRect | null>(null);
+  const startDragPos = useRef({ x: 0, y: 0 });
+  const startCorners = useRef<Point[]>([]);
 
   useEffect(() => {
     cornersRef.current = corners;
@@ -111,6 +155,8 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
     const onWindowEnd = () => {
       setDraggingIdx(null);
       setDraggingLine(null);
+      setIsDragging(false);
+      onDraggingChange?.(false);
     };
 
     window.addEventListener('mousemove', onWindowMouseMove, { passive: true });
@@ -148,12 +194,16 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
   const handleMouseDown = (idx: number) => (e: React.MouseEvent) => {
     e.preventDefault();
     setDraggingIdx(idx);
+    setIsDragging(true);
+    onDraggingChange?.(true);
     setMousePos({ x: e.clientX, y: e.clientY });
   };
 
   const handleTouchStart = (idx: number) => (e: React.TouchEvent) => {
     if (e.touches.length > 0) {
       setDraggingIdx(idx);
+      setIsDragging(true);
+      onDraggingChange?.(true);
       setMousePos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
     }
   };
@@ -161,6 +211,8 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
   const handleLineMouseDown = (side: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     setDraggingLine(side);
+    setIsDragging(true);
+    onDraggingChange?.(true);
     startDragPos.current = { x: e.clientX, y: e.clientY };
     startCorners.current = [...corners];
     setMousePos({ x: e.clientX, y: e.clientY });
@@ -169,6 +221,8 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
   const handleLineTouchStart = (side: string) => (e: React.TouchEvent) => {
     if (e.touches.length > 0) {
       setDraggingLine(side);
+      setIsDragging(true);
+      onDraggingChange?.(true);
       startDragPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       startCorners.current = [...corners];
       setMousePos({ x: e.touches[0].clientX, y: e.touches[0].clientY });
@@ -253,6 +307,17 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
           {(() => {
             const p0 = corners[0], p1 = corners[1], p2 = corners[2], p3 = corners[3];
             const w = containerSize.width, h = containerSize.height;
+            
+            // v4.7 - Simplify SVG during drag on mobile to save CPU
+            if (isMobile && isDragging) {
+              return (
+                <path 
+                  d={`M ${p0.x * w},${p0.y * h} L ${p1.x * w},${p1.y * h} L ${p2.x * w},${p2.y * h} L ${p3.x * w},${p3.y * h} Z`}
+                  className="fill-red-600/5 stroke-red-600 stroke-[2] stroke-dasharray-[6,6]"
+                />
+              );
+            }
+
             const curv = (filters?.curvature || 0) * 0.001;
             const bCurv = (filters?.barrelCurvature || 0) * 0.001;
             
@@ -320,7 +385,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
             );
           })()}
           {/* Crosshairs for each corner */}
-          {corners.map((p, i) => {
+          {(!isMobile || !isDragging) && corners.map((p, i) => {
             const p0 = corners[0], p1 = corners[1], p2 = corners[2], p3 = corners[3];
             const w = containerSize.width, h = containerSize.height;
             const curv = (filters?.curvature || 0) * 0.001;
@@ -433,7 +498,8 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
                 left: `${p.x * containerSize.width}px`, 
                 top: `${p.y * containerSize.height}px`,
                 transform: `translate(calc(-50% + ${offsetX}px), calc(-50% + ${offsetY}px))`,
-                backgroundImage: draggingIdx === i ? 'none' : 'repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(220, 38, 38, 0.3) 2px, rgba(220, 38, 38, 0.3) 4px)'
+                backgroundImage: draggingIdx === i ? 'none' : 'repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(220, 38, 38, 0.3) 2px, rgba(220, 38, 38, 0.3) 4px)',
+                willChange: 'transform'
               }}
             >
               <div className="w-2 h-2 rounded-full bg-white/20" />
@@ -478,21 +544,14 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
 
               return (
                 <>
-                  <div className="absolute inset-0 overflow-hidden">
-                    <div 
-                      className="absolute top-0 left-0 pointer-events-none"
-                      style={{
-                        width: `${containerSize.width * zoom}px`,
-                        height: `${containerSize.height * zoom}px`,
-                        backgroundImage: `url(${image})`,
-                        backgroundSize: '100% 100%',
-                        backgroundRepeat: 'no-repeat',
-                        transform: `translate(${-(focalX * zoom) + targetX}px, ${-(focalY * zoom) + targetY}px)`,
-                        filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none',
-                        willChange: 'transform'
-                      }}
-                    />
-                  </div>
+                  <canvas 
+                    ref={zoomCanvasRef}
+                    className="absolute inset-0 w-full h-full pointer-events-none"
+                    style={{
+                      filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none',
+                      imageRendering: 'pixelated'
+                    }}
+                  />
                   
                   <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${magSize} ${magSize}`}>
                     <g transform={`translate(${targetX}, ${targetY}) scale(${zoom})`}>

@@ -1,4 +1,4 @@
-// v4.4 - Card Flattener Curvature Support
+// v4.7 - Card Flattener Curvature Support + Drag Optimization
 import React, { useRef, useEffect } from 'react';
 import { Point, CARD_RATIO, getPerspectiveInterpolation } from '../lib/utils';
 
@@ -7,9 +7,10 @@ interface CardFlattenerProps {
   corners: Point[];
   onFlattened: (dataUrl: string) => void;
   filters?: { brightness: number; contrast: number; saturation: number; curvature: number; barrelCurvature: number };
+  isDragging?: boolean;
 }
 
-export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, onFlattened, filters }) => {
+export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, onFlattened, filters, isDragging }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -28,7 +29,7 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
     }
 
     const processImage = () => {
-      if (!active) return;
+      if (!active || isDragging) return;
       
       // Debounce the actual processing to keep dragging smooth
       if (timeoutId) clearTimeout(timeoutId);
@@ -88,7 +89,7 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
       active = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [image, corners, onFlattened, filters]);
+  }, [image, corners, onFlattened, filters, isDragging]);
 
   return (
     <canvas 
