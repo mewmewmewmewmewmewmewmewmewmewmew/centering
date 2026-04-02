@@ -401,16 +401,27 @@ export default function App() {
                                 </div>
                                 <div className="relative w-32 h-32">
                                   {/* Simulated Corner Point */}
-                                  <div className="absolute top-0 left-0 w-4 h-4 rounded-full border-2 border-red-600 bg-red-600/20" />
+                                  <motion.div 
+                                    className="absolute top-0 left-0 w-5 h-5 rounded-full border-2 border-red-600 bg-red-600/20" 
+                                    animate={{ 
+                                      x: [0, 0, 0, 0, 40, 0],
+                                      y: [0, 0, 0, 0, 40, 0]
+                                    }}
+                                    transition={{ 
+                                      duration: 4,
+                                      repeat: Infinity,
+                                      ease: "easeInOut"
+                                    }}
+                                  />
                                   {/* Animated Hand */}
                                   <motion.div
                                     className="absolute top-0 left-0"
                                     animate={{ 
-                                      x: [0, 40, 0],
-                                      y: [0, 40, 0]
+                                      x: [-2, 58, -2, -2, 38, -2],
+                                      y: [-3, 57, -3, -3, 37, -3]
                                     }}
                                     transition={{ 
-                                      duration: 2,
+                                      duration: 4,
                                       repeat: Infinity,
                                       ease: "easeInOut"
                                     }}
@@ -514,16 +525,28 @@ export default function App() {
                                     </div>
                                     <div className="relative w-32 h-32">
                                       {/* Simulated Red Line - 3px thickness */}
-                                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[3px] h-full bg-red-600/60" />
+                                      <motion.div 
+                                        className="absolute top-0 left-1/2 -translate-x-1/2 w-[3px] h-full bg-red-600/80 shadow-[0_0_8px_rgba(220,38,38,0.4)]" 
+                                        style={{ willChange: 'transform' }}
+                                        animate={{ 
+                                          x: [0, 0, 0, 0, -30, 30, 0]
+                                        }}
+                                        transition={{ 
+                                          duration: 4,
+                                          repeat: Infinity,
+                                          ease: "easeInOut"
+                                        }}
+                                      />
                                       {/* Animated Hand */}
                                       <motion.div
                                         className="absolute top-1/2 left-1/2"
+                                        style={{ willChange: 'transform' }}
                                         animate={{ 
-                                          x: [-30, 30, -30],
-                                          y: [-16, -16, -16] // Offset to center hand on line
+                                          x: [-12, -62, 38, -12, -42, 18, -12],
+                                          y: [-13, -13, -13, -13, -13, -13, -13] // Offset to align pointer tip with line center
                                         }}
                                         transition={{ 
-                                          duration: 2,
+                                          duration: 4,
                                           repeat: Infinity,
                                           ease: "easeInOut"
                                         }}
@@ -624,7 +647,7 @@ export default function App() {
               }}
               className="text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer"
             >
-              v4.18
+              v4.27
             </button>
           </div>
           <div className="flex justify-center items-center gap-6">

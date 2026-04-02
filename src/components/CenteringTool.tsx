@@ -1,4 +1,4 @@
-// v4.18 - Centering Tool Refinements
+// v4.27 - Centering Tool Refinements
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 
