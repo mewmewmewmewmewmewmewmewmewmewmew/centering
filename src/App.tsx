@@ -649,7 +649,7 @@ export default function App() {
           }}
           className="fixed bottom-4 left-4 text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer z-[100]"
         >
-          v4.13
+          v4.14
         </button>
       </div>
     );

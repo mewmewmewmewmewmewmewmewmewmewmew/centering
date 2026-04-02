@@ -1,4 +1,4 @@
-// v4.13 - Corner Selector Curvature Support + Proxy Canvas Zoom + Mobile Optimizations
+// v4.14 - Corner Selector Curvature Support + Proxy Canvas Zoom + Mobile Optimizations + Rounded Corners
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Point, cn, getPerspectiveInterpolation } from '../lib/utils';
 
@@ -291,7 +291,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({ image, corners, 
       >
         <img 
           src={image} 
-          className="w-full h-full block pointer-events-none object-contain" 
+          className="w-full h-full block pointer-events-none object-contain rounded-lg" 
           alt="Card to analyze" 
           style={{
             filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none'
