@@ -500,30 +500,32 @@ export default function App() {
                     />
                   </div>
 
-                    <div className="w-full md:flex-1 min-w-0 flex flex-col space-y-4">
+                    <div className="w-full md:flex-1 min-w-0 min-h-0 flex flex-col space-y-4">
                       <div className="flex items-center justify-between">
                         <h3 className="text-[10px] font-bold uppercase tracking-widest">
                           <span className="text-[#e6bbd4]">2.</span> <span className="text-white/60">Centering</span>
                         </h3>
                       </div>
-                      <div className="flex flex-col">
-                        <div className="flex flex-col">
-                          <div ref={exportRef} className="p-2 rounded-[24px] sm:rounded-[43px] flex flex-col gap-3 gloss-box relative overflow-hidden">
-                            <div className="aspect-[63/88] w-full relative rounded-[16px] sm:rounded-[35px] overflow-hidden">
-                              {flattenedImage ? (
-                                <CenteringTool 
-                                  image={flattenedImage} 
-                                  originalImage={image!}
-                                  onRatiosChange={(lr, tb) => setRatios({ lr, tb })} 
-                                  filters={filters}
-                                />
-                              ) : (
-                                <div className="relative h-full w-full flex items-center justify-center">
-                                  <div className="h-full w-full aspect-[63/88] bg-white/5 border border-dashed border-white/10 rounded-[24px] flex items-center justify-center text-white/40 text-[10px] uppercase tracking-widest text-center p-8">
-                                    Adjust corners to load
+                      <div className="flex flex-col min-h-0">
+                        <div className="flex flex-col min-h-0">
+                          <div ref={exportRef} className="p-2 pb-4 rounded-[24px] sm:rounded-[43px] flex flex-col gap-3 gloss-box relative overflow-visible">
+                            <div className="w-full relative rounded-[16px] sm:rounded-[35px] shrink-0" style={{ paddingBottom: '139.6825%' }}>
+                              <div className="absolute inset-0">
+                                {flattenedImage ? (
+                                  <CenteringTool 
+                                    image={flattenedImage} 
+                                    originalImage={image!}
+                                    onRatiosChange={(lr, tb) => setRatios({ lr, tb })} 
+                                    filters={filters}
+                                  />
+                                ) : (
+                                  <div className="relative h-full w-full flex items-center justify-center">
+                                    <div className="h-full w-full aspect-[63/88] bg-white/5 border border-dashed border-white/10 rounded-[24px] flex items-center justify-center text-white/40 text-[10px] uppercase tracking-widest text-center p-8">
+                                      Adjust corners to load
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
+                              </div>
 
                               <AnimatePresence>
                                 {flattenedImage && showStep2Overlay && (

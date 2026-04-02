@@ -210,7 +210,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
 
   return (
     <div 
-      className="relative h-full w-full flex items-center justify-center overflow-hidden bg-black/60"
+      className="absolute inset-0 flex items-center justify-center bg-black/60"
       style={{ borderRadius: `${outerRadiusPx}px` }}
       onMouseMove={handleMouseMove}
       onTouchMove={handleTouchMove}
@@ -230,7 +230,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div 
               ref={containerRef}
-              className="relative w-full h-full overflow-visible select-none cursor-default transition-transform duration-200 flex items-center justify-center touch-none pointer-events-auto"
+              className="absolute inset-0 overflow-visible select-none cursor-default transition-transform duration-200 flex items-center justify-center touch-none pointer-events-auto"
               style={{
                 transform: dragging ? 'scale(2)' : 'scale(1)',
                 transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
