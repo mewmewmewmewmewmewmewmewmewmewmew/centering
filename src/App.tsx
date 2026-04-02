@@ -373,7 +373,7 @@ export default function App() {
                     </div>
                     <div className="flex flex-col items-center">
                       <div className="w-fit mx-auto flex flex-col relative">
-                        <div className="h-fit">
+                        <div className="h-fit relative">
                           {image && (
                             <CornerSelector 
                               image={image} 
@@ -383,45 +383,45 @@ export default function App() {
                               filters={filters}
                             />
                           )}
-                        </div>
 
-                        <AnimatePresence>
-                          {showStep1Overlay && (
-                            <motion.div 
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
-                              onClick={() => {
-                                setShowStep1Overlay(false);
-                                localStorage.setItem('mew_step1_seen', 'true');
-                              }}
-                              className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-lg flex flex-col items-center justify-center p-6 cursor-pointer group"
-                            >
-                              <div className="text-center mb-6">
-                                <p className="text-xs font-black text-[#e6bbd4] uppercase tracking-[0.3em] drop-shadow-lg">Step 1</p>
-                              </div>
-                              <div className="relative w-32 h-32">
-                                {/* Simulated Corner Point */}
-                                <div className="absolute top-0 left-0 w-4 h-4 rounded-full border-2 border-red-600 bg-red-600/20" />
-                                {/* Animated Hand */}
-                                <motion.div
-                                  className="absolute top-0 left-0"
-                                  animate={{ 
-                                    x: [0, 40, 0],
-                                    y: [0, 40, 0]
-                                  }}
-                                  transition={{ 
-                                    duration: 2,
-                                    repeat: Infinity,
-                                    ease: "easeInOut"
-                                  }}
-                                >
-                                  <HandCursor />
-                                </motion.div>
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                          <AnimatePresence>
+                            {showStep1Overlay && (
+                              <motion.div 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                onClick={() => {
+                                  setShowStep1Overlay(false);
+                                  localStorage.setItem('mew_step1_seen', 'true');
+                                }}
+                                className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-lg flex flex-col items-center justify-center p-6 cursor-pointer group"
+                              >
+                                <div className="text-center mb-6">
+                                  <p className="text-xs font-black text-[#e6bbd4] uppercase tracking-[0.3em] drop-shadow-lg">Step 1</p>
+                                </div>
+                                <div className="relative w-32 h-32">
+                                  {/* Simulated Corner Point */}
+                                  <div className="absolute top-0 left-0 w-4 h-4 rounded-full border-2 border-red-600 bg-red-600/20" />
+                                  {/* Animated Hand */}
+                                  <motion.div
+                                    className="absolute top-0 left-0"
+                                    animate={{ 
+                                      x: [0, 40, 0],
+                                      y: [0, 40, 0]
+                                    }}
+                                    transition={{ 
+                                      duration: 2,
+                                      repeat: Infinity,
+                                      ease: "easeInOut"
+                                    }}
+                                  >
+                                    <HandCursor />
+                                  </motion.div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
                         
                         {/* Image Controls */}
                         <div className="p-3 rounded-lg space-y-3 mt-[10px] w-full gloss-box">
@@ -507,7 +507,7 @@ export default function App() {
                                       setShowStep2Overlay(false);
                                       localStorage.setItem('mew_step2_seen', 'true');
                                     }}
-                                    className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-[24px] flex flex-col items-center justify-center p-6 cursor-pointer group"
+                                    className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-[32px] flex flex-col items-center justify-center p-6 cursor-pointer group"
                                   >
                                     <div className="text-center mb-6">
                                       <p className="text-xs font-black text-[#e6bbd4] uppercase tracking-[0.3em] drop-shadow-lg">Step 2</p>
@@ -613,8 +613,21 @@ export default function App() {
           </main>
         </div>
 
-        <footer className="mt-auto pt-12 mb-8 flex flex-col items-center gap-4">
-          <div className="flex items-center gap-6">
+        <footer className="mt-auto pt-12 pb-4 px-6 grid grid-cols-3 items-center">
+          <div className="flex justify-start">
+            <button 
+              onClick={() => {
+                localStorage.removeItem('mew_step1_seen');
+                localStorage.removeItem('mew_step2_seen');
+                setShowStep1Overlay(true);
+                setShowStep2Overlay(true);
+              }}
+              className="text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer"
+            >
+              v4.18
+            </button>
+          </div>
+          <div className="flex justify-center items-center gap-6">
             <a 
               href="https://x.com/mewmewnami" 
               target="_blank" 
@@ -639,18 +652,8 @@ export default function App() {
               <Instagram className="w-5 h-5" />
             </a>
           </div>
+          <div className="flex justify-end" />
         </footer>
-        <button 
-          onClick={() => {
-            localStorage.removeItem('mew_step1_seen');
-            localStorage.removeItem('mew_step2_seen');
-            setShowStep1Overlay(true);
-            setShowStep2Overlay(true);
-          }}
-          className="fixed bottom-4 left-4 text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer z-[100]"
-        >
-          v4.15
-        </button>
       </div>
     );
 }

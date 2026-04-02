@@ -1,4 +1,4 @@
-// v4.15 - Card Flattener Curvature Support + Drag Optimization
+// v4.18 - Card Flattener Curvature Support + Drag Optimization
 import React, { useRef, useEffect } from 'react';
 import { Point, CARD_RATIO, getPerspectiveInterpolation } from '../lib/utils';
 
