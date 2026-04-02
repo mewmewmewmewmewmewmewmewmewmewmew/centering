@@ -90,6 +90,7 @@ export default function App() {
 
   const [flattenedImage, setFlattenedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [selectionMode, setSelectionMode] = useState<'drag' | 'sequential'>('drag');
   const [showStep1Overlay, setShowStep1Overlay] = useState(() => !localStorage.getItem('mew_step1_seen'));
   const [showStep2Overlay, setShowStep2Overlay] = useState(() => !localStorage.getItem('mew_step2_seen'));
   const [ratios, setRatios] = useState({ lr: 50, tb: 50 });
@@ -381,6 +382,8 @@ export default function App() {
                               onCornersChange={setCorners} 
                               onDraggingChange={setIsDragging}
                               filters={filters}
+                              selectionMode={selectionMode}
+                              onSelectionModeChange={setSelectionMode}
                             />
                           )}
 
@@ -433,41 +436,56 @@ export default function App() {
                             )}
                           </AnimatePresence>
                         </div>
+
+                        {/* Quick Select Link - Below Image */}
+                        <div className="mt-2 flex justify-end">
+                          <button 
+                            onClick={() => setSelectionMode('sequential')}
+                            className={cn(
+                              "hidden md:block text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-70",
+                              selectionMode === 'sequential' ? "text-white underline underline-offset-4" : "text-[#e6bbd4]"
+                            )}
+                          >
+                            QUICK SELECT
+                          </button>
+                        </div>
                         
                         {/* Image Controls */}
-                        <div className="p-3 rounded-lg space-y-3 mt-[10px] w-full gloss-box">
-                          {[
-                            { icon: Curve1Icon, value: filters.curvature, key: 'curvature', color: 'text-[#e6bbd4]' },
-                            { icon: Curve2Icon, value: filters.barrelCurvature, key: 'barrelCurvature', color: 'text-[#e6bbd4]' },
-                            { icon: Sun, value: filters.brightness, key: 'brightness', color: 'text-white/60' },
-                            { icon: Contrast, value: filters.contrast, key: 'contrast', color: 'text-white/60' },
-                            { icon: Palette, value: filters.saturation, key: 'saturation', color: 'text-white/60' }
-                          ].map(({ icon: Icon, value, key, color }) => (
-                            <div key={key} className="flex items-center gap-3">
-                              <Icon className={cn("w-3 h-3 shrink-0", color)} />
-                              <div className="flex-1 relative flex items-center h-4">
-                                {/* Center Indicator Line - Taller */}
-                                <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[1px] h-5 bg-white/30 pointer-events-none z-0" />
-                                <input 
-                                  type="range" 
-                                  min="-100" 
-                                  max="100" 
-                                  value={(key === 'curvature' || key === 'barrelCurvature') ? -value : value} 
-                                  onChange={(e) => {
-                                    let val = parseInt(e.target.value);
-                                    const isCurve = key === 'curvature' || key === 'barrelCurvature';
-                                    // Snap to 0 if close (except for curvature sliders)
-                                    if (!isCurve && Math.abs(val) < 8) val = 0;
-                                    
-                                    // Reverse curvature values internally
-                                    const finalVal = isCurve ? -val : val;
-                                    setFilters(f => ({ ...f, [key]: finalVal }));
-                                  }}
-                                  className="relative z-10 w-full custom-slider"
-                                />
+                        <div className="p-3 rounded-lg mt-[10px] w-full gloss-box relative overflow-hidden">
+                          <div className="space-y-3 pt-2 w-[90%] mx-auto">
+                            {[
+                              { icon: Curve1Icon, value: filters.curvature, key: 'curvature', color: 'text-[#e6bbd4]' },
+                              { icon: Curve2Icon, value: filters.barrelCurvature, key: 'barrelCurvature', color: 'text-[#e6bbd4]' },
+                              { icon: Sun, value: filters.brightness, key: 'brightness', color: 'text-white/60' },
+                              { icon: Contrast, value: filters.contrast, key: 'contrast', color: 'text-white/60' },
+                              { icon: Palette, value: filters.saturation, key: 'saturation', color: 'text-white/60' }
+                            ].map(({ icon: Icon, value, key, color }) => (
+                              <div key={key} className="flex items-center gap-3">
+                                <Icon className={cn("w-3 h-3 shrink-0", color)} />
+                                <div className="flex-1 relative flex items-center h-4">
+                                  {/* Center Indicator Line - Taller */}
+                                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[1px] h-5 bg-white/30 pointer-events-none z-0" />
+                                  <input 
+                                    type="range" 
+                                    min="-100" 
+                                    max="100" 
+                                    value={(key === 'curvature' || key === 'barrelCurvature') ? -value : value} 
+                                    onChange={(e) => {
+                                      let val = parseInt(e.target.value);
+                                      const isCurve = key === 'curvature' || key === 'barrelCurvature';
+                                      // Snap to 0 if close (except for curvature sliders)
+                                      if (!isCurve && Math.abs(val) < 8) val = 0;
+                                      
+                                      // Reverse curvature values internally
+                                      const finalVal = isCurve ? -val : val;
+                                      setFilters(f => ({ ...f, [key]: finalVal }));
+                                    }}
+                                    className="relative z-10 w-full custom-slider"
+                                  />
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -491,8 +509,8 @@ export default function App() {
                       </div>
                       <div className="flex flex-col">
                         <div className="flex flex-col">
-                          <div ref={exportRef} className="p-2 pb-2 rounded-[36px] flex flex-col gap-3 gloss-box relative overflow-hidden">
-                            <div className="aspect-[63/88] w-full relative">
+                          <div ref={exportRef} className="p-2 pb-2 rounded-[29px] sm:rounded-[43px] flex flex-col gap-3 gloss-box relative overflow-hidden">
+                            <div className="aspect-[63/88] w-full relative rounded-[21px] sm:rounded-[35px] overflow-hidden">
                               {flattenedImage ? (
                                 <CenteringTool 
                                   image={flattenedImage} 
@@ -518,7 +536,7 @@ export default function App() {
                                       setShowStep2Overlay(false);
                                       localStorage.setItem('mew_step2_seen', 'true');
                                     }}
-                                    className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-[32px] flex flex-col items-center justify-center p-6 cursor-pointer group"
+                                    className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-[21px] sm:rounded-[35px] flex flex-col items-center justify-center p-6 cursor-pointer group"
                                   >
                                     <div className="text-center mb-6">
                                       <p className="text-xs font-black text-[#e6bbd4] uppercase tracking-[0.3em] drop-shadow-lg">Step 2</p>
@@ -647,7 +665,7 @@ export default function App() {
               }}
               className="text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer"
             >
-              v4.27
+              v4.34
             </button>
           </div>
           <div className="flex justify-center items-center gap-6">

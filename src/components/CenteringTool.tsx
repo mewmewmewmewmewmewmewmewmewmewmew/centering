@@ -196,7 +196,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
       : 0.02;
 
     const cardWidthPx = containerSize.width * (1 - 2 * mx);
-    const cardRadiusPx = cardWidthPx * 0.05;
+    const cardRadiusPx = cardWidthPx * 0.05; 
     const outerRadiusPx = cardRadiusPx + (containerSize.width * 0.02);
 
     const leftWidth = lines.left;
@@ -228,27 +228,27 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
 
       {/* Card Container (Zoomed Out with buffer) */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        <div 
-          ref={containerRef}
-          className="relative max-w-full max-h-full aspect-[63/88] overflow-visible select-none cursor-default transition-transform duration-200 flex items-center justify-center touch-none pointer-events-auto shadow-2xl"
-          style={{
-            transform: dragging ? 'scale(2)' : 'scale(1)',
-            transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
-            width: '100%',
-            height: '100%',
-            borderRadius: `${outerRadiusPx}px`
-          }}
-        >
-          <img 
-            key={image} // Force re-render when image changes
-            src={image} 
-            className="w-full h-full block pointer-events-none shadow-2xl object-fill" 
-            alt="Flattened card" 
-            style={{
-              filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none',
-              borderRadius: `${outerRadiusPx}px`
-            }}
-          />
+            <div 
+              ref={containerRef}
+              className="relative max-w-full max-h-full aspect-[63/88] overflow-visible select-none cursor-default transition-transform duration-200 flex items-center justify-center touch-none pointer-events-auto"
+              style={{
+                transform: dragging ? 'scale(2)' : 'scale(1)',
+                transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
+                width: '100%',
+                height: '100%',
+                borderRadius: `${outerRadiusPx}px`
+              }}
+            >
+              <img 
+                key={image} // Force re-render when image changes
+                src={image} 
+                className="w-full h-full block pointer-events-none shadow-2xl object-fill" 
+                alt="Flattened card" 
+                style={{
+                  filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none',
+                  borderRadius: `${outerRadiusPx}px`
+                }}
+              />
 
           {/* Fixed Card Outline (at proportional margin) - Using SVG for sub-pixel precision */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
@@ -257,7 +257,15 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
                 <rect width="2" height="6" fill="#f97316" opacity="0.8" />
               </pattern>
               <mask id="cardMask">
-                <rect x="-10%" y="-10%" width="120%" height="120%" fill="white" />
+                <rect 
+                  x="0" 
+                  y="0" 
+                  width="100%" 
+                  height="100%" 
+                  rx={outerRadiusPx} 
+                  ry={outerRadiusPx} 
+                  fill="white" 
+                />
                 <rect 
                   x={`${mx * 100}%`} 
                   y={`${my * 100}%`} 
@@ -305,7 +313,16 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
           
           {/* Overlay for borders */}
           <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute inset-0 bg-red-600/5" style={{ left: `${lines.left * 100}%`, right: `${(1 - lines.right) * 100}%`, top: `${lines.top * 100}%`, bottom: `${(1 - lines.bottom) * 100}%` }} />
+            <div 
+              className="absolute inset-0 bg-red-600/5" 
+              style={{ 
+                left: `${lines.left * 100}%`, 
+                right: `${(1 - lines.right) * 100}%`, 
+                top: `${lines.top * 100}%`, 
+                bottom: `${(1 - lines.bottom) * 100}%`,
+                borderRadius: `${cardRadiusPx}px` // Add radius to border overlay
+              }} 
+            />
           </div>
 
           {/* Draggable Lines */}
@@ -369,13 +386,13 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
           {(dragging === 'left' || dragging === 'right') && (
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">L/R</span>
-              <span className="text-xs font-mono font-bold text-[#e6bbd4]">{lrRatio.toFixed(1)}:{ (100 - lrRatio).toFixed(1) }</span>
+              <span className="text-xs font-mono font-bold text-[#ef4444]">{lrRatio.toFixed(1)}:{ (100 - lrRatio).toFixed(1) }</span>
             </div>
           )}
           {(dragging === 'top' || dragging === 'bottom') && (
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">T/B</span>
-              <span className="text-xs font-mono font-bold text-[#e6bbd4]">{tbRatio.toFixed(1)}:{ (100 - tbRatio).toFixed(1) }</span>
+              <span className="text-xs font-mono font-bold text-[#ef4444]">{tbRatio.toFixed(1)}:{ (100 - tbRatio).toFixed(1) }</span>
             </div>
           )}
         </div>
