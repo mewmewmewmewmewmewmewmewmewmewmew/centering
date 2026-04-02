@@ -521,7 +521,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
       <div 
         ref={containerRef}
         className={cn(
-          "relative select-none w-fit h-fit",
+          "relative select-none w-full h-auto max-w-full",
           selectionMode === 'sequential' 
             ? (isPanning ? "cursor-grabbing" : (seqPhase === 'select_points' ? "cursor-crosshair" : "cursor-zoom-in")) 
             : "cursor-default"
@@ -537,7 +537,6 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
         onTouchEnd={handleSeqMouseUp}
         style={{
           aspectRatio: imgSize.width && imgSize.height ? `${imgSize.width} / ${imgSize.height}` : 'auto',
-          maxWidth: '100%',
           willChange: 'auto'
         }}
       >
