@@ -230,19 +230,17 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div 
               ref={containerRef}
-              className="relative max-w-full max-h-full aspect-[63/88] overflow-visible select-none cursor-default transition-transform duration-200 flex items-center justify-center touch-none pointer-events-auto"
+              className="relative w-full h-full overflow-visible select-none cursor-default transition-transform duration-200 flex items-center justify-center touch-none pointer-events-auto"
               style={{
                 transform: dragging ? 'scale(2)' : 'scale(1)',
                 transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
-                width: '100%',
-                height: '100%',
                 borderRadius: `${outerRadiusPx}px`
               }}
             >
               <img 
                 key={image} // Force re-render when image changes
                 src={image} 
-                className="w-full h-full block pointer-events-none shadow-2xl object-fill" 
+                className="w-full h-full block pointer-events-none shadow-2xl object-cover" 
                 alt="Flattened card" 
                 style={{
                   filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none',

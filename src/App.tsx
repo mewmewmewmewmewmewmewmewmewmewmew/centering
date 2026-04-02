@@ -508,8 +508,8 @@ export default function App() {
                       </div>
                       <div className="flex flex-col">
                         <div className="flex flex-col">
-                          <div ref={exportRef} className="p-2 pb-2 rounded-[23px] sm:rounded-[43px] flex flex-col gap-3 gloss-box relative overflow-hidden">
-                            <div className="aspect-[63/88] w-full relative rounded-[15px] sm:rounded-[35px] overflow-hidden">
+                          <div ref={exportRef} className="p-2 rounded-[24px] sm:rounded-[43px] flex flex-col gap-3 gloss-box relative overflow-hidden">
+                            <div className="aspect-[63/88] w-full relative rounded-[16px] sm:rounded-[35px] overflow-hidden">
                               {flattenedImage ? (
                                 <CenteringTool 
                                   image={flattenedImage} 
@@ -535,7 +535,7 @@ export default function App() {
                                       setShowStep2Overlay(false);
                                       localStorage.setItem('mew_step2_seen', 'true');
                                     }}
-                                    className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-[15px] sm:rounded-[35px] flex flex-col items-center justify-center p-6 cursor-pointer group"
+                                    className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-[16px] sm:rounded-[35px] flex flex-col items-center justify-center p-6 cursor-pointer group"
                                   >
                                     <div className="text-center mb-6">
                                       <p className="text-xs font-black text-[#e6bbd4] uppercase tracking-[0.3em] drop-shadow-lg">Step 2</p>
