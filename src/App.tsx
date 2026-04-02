@@ -90,7 +90,32 @@ export default function App() {
 
   const [flattenedImage, setFlattenedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showStep1Overlay, setShowStep1Overlay] = useState(() => !localStorage.getItem('mew_step1_seen'));
+  const [showStep2Overlay, setShowStep2Overlay] = useState(() => !localStorage.getItem('mew_step2_seen'));
   const [ratios, setRatios] = useState({ lr: 50, tb: 50 });
+
+  const HandCursor = ({ className }: { className?: string }) => (
+    <motion.div 
+      className={cn("pointer-events-none z-[60]", className)}
+      initial={{ scale: 1 }}
+      animate={{ 
+        scale: [1, 0.9, 1],
+      }}
+      transition={{ 
+        duration: 2,
+        repeat: Infinity,
+        ease: "easeInOut"
+      }}
+    >
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 4.1 12 6"/>
+        <path d="m5.1 8-2.9-.8"/>
+        <path d="m6 12-1.9 2"/>
+        <path d="M7.2 2.2 8 5.1"/>
+        <path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1-.074.949l-4.349 1.041a1 1 0 0 0-.74.739l-1.04 4.35a.5.5 0 0 1-.95.074z" fill="rgba(255,255,255,0.2)"/>
+      </svg>
+    </motion.div>
+  );
   const [filters, setFilters] = useState({ brightness: 0, contrast: 0, saturation: 0, curvature: 0, barrelCurvature: 0 });
   const [isSaving, setIsSaving] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
@@ -347,7 +372,7 @@ export default function App() {
                       </h3>
                     </div>
                     <div className="flex flex-col items-center">
-                      <div className="w-fit mx-auto flex flex-col">
+                      <div className="w-fit mx-auto flex flex-col relative">
                         <div className="h-fit">
                           {image && (
                             <CornerSelector 
@@ -359,6 +384,44 @@ export default function App() {
                             />
                           )}
                         </div>
+
+                        <AnimatePresence>
+                          {showStep1Overlay && (
+                            <motion.div 
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              onClick={() => {
+                                setShowStep1Overlay(false);
+                                localStorage.setItem('mew_step1_seen', 'true');
+                              }}
+                              className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-lg flex flex-col items-center justify-center p-6 cursor-pointer group"
+                            >
+                              <div className="text-center mb-6">
+                                <p className="text-xs font-black text-white uppercase tracking-[0.3em] drop-shadow-lg">Step 1</p>
+                              </div>
+                              <div className="relative w-32 h-32">
+                                {/* Simulated Corner Point */}
+                                <div className="absolute top-0 left-0 w-4 h-4 rounded-full border-2 border-red-600 bg-red-600/20" />
+                                {/* Animated Hand */}
+                                <motion.div
+                                  className="absolute top-0 left-0"
+                                  animate={{ 
+                                    x: [0, 40, 0],
+                                    y: [0, 40, 0]
+                                  }}
+                                  transition={{ 
+                                    duration: 2,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
+                                  }}
+                                >
+                                  <HandCursor />
+                                </motion.div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                         
                         {/* Image Controls */}
                         <div className="p-3 rounded-lg space-y-3 mt-[10px] w-full gloss-box">
@@ -417,8 +480,8 @@ export default function App() {
                       </div>
                       <div className="flex flex-col">
                         <div className="flex flex-col">
-                          <div ref={exportRef} className="p-2 pb-2 rounded-[36px] flex flex-col gap-3 gloss-box">
-                            <div className="aspect-[63/88] w-full">
+                          <div ref={exportRef} className="p-2 pb-2 rounded-[36px] flex flex-col gap-3 gloss-box relative overflow-hidden">
+                            <div className="aspect-[63/88] w-full relative">
                               {flattenedImage ? (
                                 <CenteringTool 
                                   image={flattenedImage} 
@@ -433,6 +496,44 @@ export default function App() {
                                   </div>
                                 </div>
                               )}
+
+                              <AnimatePresence>
+                                {flattenedImage && showStep2Overlay && (
+                                  <motion.div 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    onClick={() => {
+                                      setShowStep2Overlay(false);
+                                      localStorage.setItem('mew_step2_seen', 'true');
+                                    }}
+                                    className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-[24px] flex flex-col items-center justify-center p-6 cursor-pointer group"
+                                  >
+                                    <div className="text-center mb-6">
+                                      <p className="text-xs font-black text-white uppercase tracking-[0.3em] drop-shadow-lg">Step 2</p>
+                                    </div>
+                                    <div className="relative w-32 h-32">
+                                      {/* Simulated Red Line - 3px thickness */}
+                                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[3px] h-full bg-red-600/60" />
+                                      {/* Animated Hand */}
+                                      <motion.div
+                                        className="absolute top-1/2 left-1/2"
+                                        animate={{ 
+                                          x: [-30, 30, -30],
+                                          y: [-16, -16, -16] // Offset to center hand on line
+                                        }}
+                                        transition={{ 
+                                          duration: 2,
+                                          repeat: Infinity,
+                                          ease: "easeInOut"
+                                        }}
+                                      >
+                                        <HandCursor />
+                                      </motion.div>
+                                    </div>
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
                             </div>
 
                             {/* Centering Report Section */}
@@ -539,9 +640,17 @@ export default function App() {
             </a>
           </div>
         </footer>
-        <div className="fixed bottom-4 left-4 text-[8px] font-mono text-white/20 uppercase tracking-widest pointer-events-none">
-          v4.7
-        </div>
+        <button 
+          onClick={() => {
+            localStorage.removeItem('mew_step1_seen');
+            localStorage.removeItem('mew_step2_seen');
+            setShowStep1Overlay(true);
+            setShowStep2Overlay(true);
+          }}
+          className="fixed bottom-4 left-4 text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer z-[100]"
+        >
+          v4.13
+        </button>
       </div>
     );
 }

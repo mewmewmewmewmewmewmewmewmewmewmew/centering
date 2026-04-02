@@ -1,4 +1,4 @@
-// v4.7 - Corner Selector Curvature Support + Proxy Canvas Zoom + Mobile Optimizations
+// v4.13 - Corner Selector Curvature Support + Proxy Canvas Zoom + Mobile Optimizations
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Point, cn, getPerspectiveInterpolation } from '../lib/utils';
 
