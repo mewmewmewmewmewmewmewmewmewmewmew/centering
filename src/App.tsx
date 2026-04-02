@@ -398,7 +398,7 @@ export default function App() {
                               className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-lg flex flex-col items-center justify-center p-6 cursor-pointer group"
                             >
                               <div className="text-center mb-6">
-                                <p className="text-xs font-black text-white uppercase tracking-[0.3em] drop-shadow-lg">Step 1</p>
+                                <p className="text-xs font-black text-[#e6bbd4] uppercase tracking-[0.3em] drop-shadow-lg">Step 1</p>
                               </div>
                               <div className="relative w-32 h-32">
                                 {/* Simulated Corner Point */}
@@ -510,7 +510,7 @@ export default function App() {
                                     className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-[24px] flex flex-col items-center justify-center p-6 cursor-pointer group"
                                   >
                                     <div className="text-center mb-6">
-                                      <p className="text-xs font-black text-white uppercase tracking-[0.3em] drop-shadow-lg">Step 2</p>
+                                      <p className="text-xs font-black text-[#e6bbd4] uppercase tracking-[0.3em] drop-shadow-lg">Step 2</p>
                                     </div>
                                     <div className="relative w-32 h-32">
                                       {/* Simulated Red Line - 3px thickness */}
@@ -649,7 +649,7 @@ export default function App() {
           }}
           className="fixed bottom-4 left-4 text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer z-[100]"
         >
-          v4.14
+          v4.15
         </button>
       </div>
     );
