@@ -437,13 +437,12 @@ export default function App() {
                           </AnimatePresence>
                         </div>
 
-                        {/* Quick Select Link - Below Image */}
                         <div className="mt-2 flex justify-end">
                           <button 
-                            onClick={() => setSelectionMode('sequential')}
+                            onClick={() => setSelectionMode(selectionMode === 'sequential' ? 'drag' : 'sequential')}
                             className={cn(
-                              "hidden md:block text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-70",
-                              selectionMode === 'sequential' ? "text-white underline underline-offset-4" : "text-[#e6bbd4]"
+                              "hidden md:block text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-70 text-[#e6bbd4]",
+                              selectionMode === 'sequential' && "opacity-50"
                             )}
                           >
                             QUICK SELECT
