@@ -29,6 +29,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState<string | null>(null);
+  const lastRatiosRef = useRef({ lr: 0, tb: 0 });
 
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
 
@@ -66,6 +67,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
       const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
       
+      lastRatiosRef.current = { lr: lrRatio, tb: tbRatio };
       onRatiosChange(lrRatio, tbRatio);
     }
   }, [containerSize, linesInitialized, onRatiosChange, lines]);
@@ -110,14 +112,15 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     }
   };
 
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
   const onMove = (clientX: number, clientY: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const x = (clientX - rect.left) / rect.width;
     const y = (clientY - rect.top) / rect.height;
-    setMousePos({ x: clientX, y: clientY });
+    
+    // Update CSS variables for mouse tracking to avoid React re-renders
+    containerRef.current.style.setProperty('--mouse-x', `${x * 100}%`);
+    containerRef.current.style.setProperty('--mouse-y', `${y * 100}%`);
 
     if (!dragging) return;
 
@@ -155,7 +158,11 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
     const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
 
-    onRatiosChange(lrRatio, tbRatio);
+    // Only report if changed significantly to reduce parent re-renders
+    if (Math.abs(lrRatio - lastRatiosRef.current.lr) > 0.1 || Math.abs(tbRatio - lastRatiosRef.current.tb) > 0.1) {
+      lastRatiosRef.current = { lr: lrRatio, tb: tbRatio };
+      onRatiosChange(lrRatio, tbRatio);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -173,19 +180,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
 
   const handleMouseUp = () => setDragging(null);
   const handleTouchEnd = () => setDragging(null);
-
-  const isNear = (val: number, current: number, isX: boolean) => {
-    if (!containerRef.current) return false;
-    const rect = containerRef.current.getBoundingClientRect();
-    const pos = isX ? (mousePos.x - rect.left) / rect.width : (mousePos.y - rect.top) / rect.height;
-    const mouseCoord = isX ? mousePos.y - rect.top : mousePos.x - rect.left;
-    const lineCoord = isX ? mousePos.x - rect.left : mousePos.y - rect.top;
-    
-    // We want to check if the mouse is near the line AND if we should thicken the segment
-    // But the user wants "only thicken the portion the cursor is around"
-    // So we'll render a small "handle" or a thicker segment that follows the mouse.
-    return Math.abs(val - pos) < 0.05; 
-  };
 
     // Proportional margins to ensure equal pixel thickness on all sides
     const mx = 0.02;
@@ -230,7 +224,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <div 
               ref={containerRef}
-              className="absolute inset-0 overflow-visible select-none cursor-default transition-transform duration-200 flex items-center justify-center touch-none pointer-events-auto"
+              className={cn(
+                "absolute inset-0 overflow-visible select-none cursor-default flex items-center justify-center touch-none pointer-events-auto",
+                !dragging && "transition-transform duration-200"
+              )}
               style={{
                 transform: dragging ? 'scale(2)' : 'scale(1)',
                 transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
@@ -305,7 +302,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
               fill="none"
               stroke="#dc2626" // red-600
               strokeWidth="1"
-              className="transition-all duration-200"
+              className={cn(!dragging && "transition-all duration-200")}
             />
           </svg>
           
@@ -346,7 +343,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                 {/* The actual thin line */}
                 <div 
                   className={cn(
-                    "absolute bg-red-600 transition-all shadow-[0_0_8px_rgba(220,38,38,0.3)]",
+                    "absolute bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.3)]",
+                    !dragging && "transition-all",
                     isVertical ? "left-1/2 h-full -translate-x-1/2" : "top-1/2 w-full -translate-y-1/2"
                   )} 
                   style={{
@@ -362,14 +360,12 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                 <div 
                   className={cn(
                     "absolute bg-red-600 rounded-full transition-opacity opacity-0 group-hover:opacity-100",
-                    isVertical ? "left-1/2 w-1 h-12 -translate-x-1/2" : "top-1/2 h-1 w-12 -translate-y-1/2",
+                    isVertical ? "left-1/2 w-1 h-12" : "top-1/2 h-1 w-12",
                     isDragging && "opacity-100 shadow-[0_0_10px_rgba(220,38,38,0.6)]"
                   )}
                   style={{
-                    [isVertical ? 'top' : 'left']: isVertical 
-                      ? `${((mousePos.y - (containerRef.current?.getBoundingClientRect().top || 0)) / (containerSize.height || 1)) * 100}%`
-                      : `${((mousePos.x - (containerRef.current?.getBoundingClientRect().left || 0)) / (containerSize.width || 1)) * 100}%`,
-                    transform: isVertical ? 'translate(-50%, -50%)' : 'translate(-50%, -50%)'
+                    [isVertical ? 'top' : 'left']: isVertical ? 'var(--mouse-y)' : 'var(--mouse-x)',
+                    transform: 'translate(-50%, -50%)'
                   }}
                 />
               </div>
