@@ -67,17 +67,17 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
       setLinesInitialized(true);
 
       // Report initial ratios
-      const leftWidth = initialLines.left;
-      const rightWidth = 1 - initialLines.right;
-      const topHeight = initialLines.top;
-      const bottomHeight = 1 - initialLines.bottom;
-      const lrTotal = leftWidth + rightWidth;
-      const tbTotal = topHeight + bottomHeight;
-      const lrRatio = (leftWidth / lrTotal) * 100;
-      const tbRatio = (topHeight / tbTotal) * 100;
+      const innerLeft = Math.max(0, initialLines.left - mx);
+      const innerRight = Math.max(0, (1 - mx) - initialLines.right);
+      const innerTop = Math.max(0, initialLines.top - my);
+      const innerBottom = Math.max(0, (1 - my) - initialLines.bottom);
+      const lrTotal = innerLeft + innerRight;
+      const tbTotal = innerTop + innerBottom;
+      const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
+      const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
       onRatiosChange(lrRatio, tbRatio);
     }
-  }, [containerSize, linesInitialized]);
+  }, [containerSize, linesInitialized, onRatiosChange]);
 
   const handleMouseDown = (side: string) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -145,17 +145,22 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
 
     setLines(newLines);
     
-    // Calculate ratios
-    const leftWidth = newLines.left;
-    const rightWidth = 1 - newLines.right;
-    const topHeight = newLines.top;
-    const bottomHeight = 1 - newLines.bottom;
+    // Calculate ratios excluding margins
+    const mx = 0.02;
+    const my = containerSize.width && containerSize.height 
+      ? (containerSize.width * 0.02) / containerSize.height 
+      : 0.02;
 
-    const lrTotal = leftWidth + rightWidth;
-    const tbTotal = topHeight + bottomHeight;
+    const innerLeft = Math.max(0, newLines.left - mx);
+    const innerRight = Math.max(0, (1 - mx) - newLines.right);
+    const innerTop = Math.max(0, newLines.top - my);
+    const innerBottom = Math.max(0, (1 - my) - newLines.bottom);
 
-    const lrRatio = (leftWidth / lrTotal) * 100;
-    const tbRatio = (topHeight / tbTotal) * 100;
+    const lrTotal = innerLeft + innerRight;
+    const tbTotal = innerTop + innerBottom;
+
+    const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
+    const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
 
     onRatiosChange(lrRatio, tbRatio);
   };
@@ -199,14 +204,16 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
     const cardRadiusPx = cardWidthPx * 0.05; 
     const outerRadiusPx = cardRadiusPx + (containerSize.width * 0.02);
 
-    const leftWidth = lines.left;
-    const rightWidth = 1 - lines.right;
-    const topHeight = lines.top;
-    const bottomHeight = 1 - lines.bottom;
-    const lrTotal = leftWidth + rightWidth;
-    const tbTotal = topHeight + bottomHeight;
-    const lrRatio = (leftWidth / lrTotal) * 100;
-    const tbRatio = (topHeight / tbTotal) * 100;
+    const innerLeft = Math.max(0, lines.left - mx);
+    const innerRight = Math.max(0, (1 - mx) - lines.right);
+    const innerTop = Math.max(0, lines.top - my);
+    const innerBottom = Math.max(0, (1 - my) - lines.bottom);
+
+    const lrTotal = innerLeft + innerRight;
+    const tbTotal = innerTop + innerBottom;
+
+    const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
+    const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
 
   return (
     <div 
