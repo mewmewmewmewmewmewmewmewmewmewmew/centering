@@ -121,6 +121,68 @@ export default function App() {
   const [isSaving, setIsSaving] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
+  const [lines, setLines] = useState(() => {
+    const mx = 0.02;
+    const my = (63 * 0.02) / 88;
+    const cardW = 1 - 2 * mx;
+    const cardH = 1 - 2 * my;
+    const DEFAULT_OFFSET = 0.03;
+    return {
+      left: mx + (cardW * DEFAULT_OFFSET),
+      right: (1 - mx) - (cardW * DEFAULT_OFFSET),
+      top: my + (cardH * DEFAULT_OFFSET),
+      bottom: (1 - my) - (cardH * DEFAULT_OFFSET)
+    };
+  });
+
+  const [history, setHistory] = useState<{ 
+    corners: Point[], 
+    lines: any,
+    seqPoints: Point[],
+    seqStep: number,
+    seqPhase: 'select_region' | 'select_points',
+    currentRegion: Point | null
+  }[]>([]);
+
+  const [seqPoints, setSeqPoints] = useState<Point[]>([]);
+  const [seqStep, setSeqStep] = useState(0);
+  const [seqPhase, setSeqPhase] = useState<'select_region' | 'select_points'>('select_region');
+  const [currentRegion, setCurrentRegion] = useState<Point | null>(null);
+
+  const pushToHistory = useCallback(() => {
+    setHistory(prev => [
+      ...prev,
+      { 
+        corners: JSON.parse(JSON.stringify(corners)), 
+        lines: { ...lines },
+        seqPoints: [...seqPoints],
+        seqStep,
+        seqPhase,
+        currentRegion: currentRegion ? { ...currentRegion } : null
+      }
+    ].slice(-50));
+  }, [corners, lines, seqPoints, seqStep, seqPhase, currentRegion]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        setHistory(prev => {
+          if (prev.length === 0) return prev;
+          const lastState = prev[prev.length - 1];
+          setCorners(lastState.corners);
+          setLines(lastState.lines);
+          setSeqPoints(lastState.seqPoints);
+          setSeqStep(lastState.seqStep);
+          setSeqPhase(lastState.seqPhase);
+          setCurrentRegion(lastState.currentRegion);
+          return prev.slice(0, -1);
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleSaveImage = async () => {
     if (!exportRef.current || isSaving) return;
     setIsSaving(true);
@@ -384,6 +446,15 @@ export default function App() {
                               filters={filters}
                               selectionMode={selectionMode}
                               onSelectionModeChange={setSelectionMode}
+                              onDragStart={pushToHistory}
+                              seqPoints={seqPoints}
+                              onSeqPointsChange={setSeqPoints}
+                              seqStep={seqStep}
+                              onSeqStepChange={setSeqStep}
+                              seqPhase={seqPhase}
+                              onSeqPhaseChange={setSeqPhase}
+                              currentRegion={currentRegion}
+                              onCurrentRegionChange={setCurrentRegion}
                             />
                           )}
 
@@ -517,6 +588,9 @@ export default function App() {
                                     originalImage={image!}
                                     onRatiosChange={(lr, tb) => setRatios({ lr, tb })} 
                                     filters={filters}
+                                    lines={lines}
+                                    onLinesChange={setLines}
+                                    onDragStart={pushToHistory}
                                   />
                                 ) : (
                                   <div className="relative h-full w-full flex items-center justify-center">

@@ -11,6 +11,15 @@ interface CornerSelectorProps {
   filters?: { brightness: number; contrast: number; saturation: number; curvature: number; barrelCurvature: number };
   selectionMode?: 'drag' | 'sequential';
   onSelectionModeChange?: (mode: 'drag' | 'sequential') => void;
+  onDragStart?: () => void;
+  seqPoints: Point[];
+  onSeqPointsChange: (points: Point[]) => void;
+  seqStep: number;
+  onSeqStepChange: (step: number) => void;
+  seqPhase: 'select_region' | 'select_points';
+  onSeqPhaseChange: (phase: 'select_region' | 'select_points') => void;
+  currentRegion: Point | null;
+  onCurrentRegionChange: (region: Point | null) => void;
 }
 
 export const CornerSelector: React.FC<CornerSelectorProps> = ({ 
@@ -20,7 +29,16 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
   onDraggingChange, 
   filters, 
   selectionMode = 'drag',
-  onSelectionModeChange
+  onSelectionModeChange,
+  onDragStart,
+  seqPoints,
+  onSeqPointsChange,
+  seqStep,
+  onSeqStepChange,
+  seqPhase,
+  onSeqPhaseChange,
+  currentRegion,
+  onCurrentRegionChange
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [imgSize, setImgSize] = useState({ width: 0, height: 0 });
@@ -36,10 +54,6 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
   const sourceImageRef = useRef<HTMLImageElement | null>(null);
 
   // Sequential Mode State
-  const [seqPoints, setSeqPoints] = useState<Point[]>([]);
-  const [seqStep, setSeqStep] = useState(0); // 0-7
-  const [seqPhase, setSeqPhase] = useState<'select_region' | 'select_points'>('select_region');
-  const [currentRegion, setCurrentRegion] = useState<Point | null>(null);
   const [seqHoverPos, setSeqHoverPos] = useState<Point | null>(null);
 
   // Panning State
@@ -50,13 +64,13 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
 
   useEffect(() => {
     if (selectionMode === 'drag') {
-      setSeqPoints([]);
-      setSeqStep(0);
-      setSeqPhase('select_region');
-      setCurrentRegion(null);
+      onSeqPointsChange([]);
+      onSeqStepChange(0);
+      onSeqPhaseChange('select_region');
+      onCurrentRegionChange(null);
     }
     setPanOffset({ x: 0, y: 0 });
-  }, [selectionMode, seqPhase]);
+  }, [selectionMode, onSeqPhaseChange, onSeqPointsChange, onSeqStepChange, onCurrentRegionChange]);
 
   useEffect(() => {
     setIsMobile(window.matchMedia('(max-width: 768px)').matches);
@@ -274,6 +288,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
 
   const handleMouseDown = (idx: number) => (e: React.MouseEvent) => {
     e.preventDefault();
+    onDragStart?.();
     setDraggingIdx(idx);
     setIsDragging(true);
     onDraggingChange?.(true);
@@ -282,6 +297,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
 
   const handleTouchStart = (idx: number) => (e: React.TouchEvent) => {
     if (e.touches.length > 0) {
+      onDragStart?.();
       setDraggingIdx(idx);
       setIsDragging(true);
       onDraggingChange?.(true);
@@ -291,6 +307,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
 
   const handleLineMouseDown = (side: string) => (e: React.MouseEvent) => {
     e.preventDefault();
+    onDragStart?.();
     setDraggingLine(side);
     setIsDragging(true);
     onDraggingChange?.(true);
@@ -301,6 +318,7 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
 
   const handleLineTouchStart = (side: string) => (e: React.TouchEvent) => {
     if (e.touches.length > 0) {
+      onDragStart?.();
       setDraggingLine(side);
       setIsDragging(true);
       onDraggingChange?.(true);
@@ -332,8 +350,9 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
     let y = (clientY - rect.top) / rect.height;
 
     if (seqPhase === 'select_region') {
-      setCurrentRegion({ x, y });
-      setSeqPhase('select_points');
+      onDragStart?.();
+      onCurrentRegionChange({ x, y });
+      onSeqPhaseChange('select_points');
       return;
     }
     
@@ -342,8 +361,9 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
     x = currentRegion!.x + (x - 0.5) / scale - (panOffset.x / (containerSize.width * scale));
     y = currentRegion!.y + (y - 0.5) / scale - (panOffset.y / (containerSize.height * scale));
 
+    onDragStart?.();
     const newPoints = [...seqPoints, { x, y }];
-    setSeqPoints(newPoints);
+    onSeqPointsChange(newPoints);
     
     if (newPoints.length % 2 === 0) {
       // Finished a corner
@@ -389,20 +409,20 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
         ];
 
         onCornersChange(finalCorners as [Point, Point, Point, Point]);
-        setSeqPoints([]);
-        setSeqStep(0);
-        setSeqPhase('select_region');
-        setCurrentRegion(null);
+        onSeqPointsChange([]);
+        onSeqStepChange(0);
+        onSeqPhaseChange('select_region');
+        onCurrentRegionChange(null);
         setPanOffset({ x: 0, y: 0 });
         onSelectionModeChange?.('drag');
       } else {
-        setSeqStep(newPoints.length);
-        setSeqPhase('select_region');
-        setCurrentRegion(null);
+        onSeqStepChange(newPoints.length);
+        onSeqPhaseChange('select_region');
+        onCurrentRegionChange(null);
         setPanOffset({ x: 0, y: 0 });
       }
     } else {
-      setSeqStep(newPoints.length);
+      onSeqStepChange(newPoints.length);
     }
   };
 

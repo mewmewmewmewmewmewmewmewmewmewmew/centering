@@ -7,25 +7,24 @@ interface CenteringToolProps {
   originalImage: string;
   onRatiosChange: (lr: number, tb: number) => void;
   filters?: { brightness: number; contrast: number; saturation: number; curvature: number };
+  lines: { left: number; right: number; top: number; bottom: number };
+  onLinesChange: (lines: { left: number; right: number; top: number; bottom: number }) => void;
+  onDragStart?: () => void;
 }
 
-export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalImage, onRatiosChange, filters }) => {
+export const CenteringTool: React.FC<CenteringToolProps> = ({ 
+  image, 
+  originalImage, 
+  onRatiosChange, 
+  filters,
+  lines,
+  onLinesChange,
+  onDragStart
+}) => {
   const MARGIN = 0.02;
   const CARD_SIZE = 0.96; // 1 - 2 * MARGIN
   const DEFAULT_OFFSET = 0.03;
 
-  const [lines, setLines] = useState(() => {
-    const mx = 0.02;
-    const my = (63 * 0.02) / 88;
-    const cardW = 1 - 2 * mx;
-    const cardH = 1 - 2 * my;
-    return {
-      left: mx + (cardW * DEFAULT_OFFSET),
-      right: (1 - mx) - (cardW * DEFAULT_OFFSET),
-      top: my + (cardH * DEFAULT_OFFSET),
-      bottom: (1 - my) - (cardH * DEFAULT_OFFSET)
-    };
-  });
   const [linesInitialized, setLinesInitialized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -51,36 +50,29 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
 
   useEffect(() => {
     if (containerSize.width && containerSize.height && !linesInitialized) {
-      const mx = 0.02;
-      const my = (containerSize.width * 0.02) / containerSize.height;
-      const cardW = 1 - 2 * mx;
-      const cardH = 1 - 2 * my;
-      
-      const initialLines = {
-        left: mx + (cardW * DEFAULT_OFFSET),
-        right: (1 - mx) - (cardW * DEFAULT_OFFSET),
-        top: my + (cardH * DEFAULT_OFFSET),
-        bottom: (1 - my) - (cardH * DEFAULT_OFFSET)
-      };
-      
-      setLines(initialLines);
       setLinesInitialized(true);
 
       // Report initial ratios
-      const innerLeft = Math.max(0, initialLines.left - mx);
-      const innerRight = Math.max(0, (1 - mx) - initialLines.right);
-      const innerTop = Math.max(0, initialLines.top - my);
-      const innerBottom = Math.max(0, (1 - my) - initialLines.bottom);
+      const mx = 0.02;
+      const my = (containerSize.width * 0.02) / containerSize.height;
+      const innerLeft = Math.max(0, lines.left - mx);
+      const innerRight = Math.max(0, (1 - mx) - lines.right);
+      const innerTop = Math.max(0, lines.top - my);
+      const innerBottom = Math.max(0, (1 - my) - lines.bottom);
+      
       const lrTotal = innerLeft + innerRight;
       const tbTotal = innerTop + innerBottom;
+      
       const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
       const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
+      
       onRatiosChange(lrRatio, tbRatio);
     }
-  }, [containerSize, linesInitialized, onRatiosChange]);
+  }, [containerSize, linesInitialized, onRatiosChange, lines]);
 
   const handleMouseDown = (side: string) => (e: React.MouseEvent) => {
     e.preventDefault();
+    onDragStart?.();
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -101,6 +93,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
   const handleTouchStart = (side: string) => (e: React.TouchEvent) => {
     if (e.touches.length > 0 && containerRef.current) {
       e.preventDefault(); // Prevent scroll start
+      onDragStart?.();
       const rect = containerRef.current.getBoundingClientRect();
       const x = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
       const y = ((e.touches[0].clientY - rect.top) / rect.height) * 100;
@@ -143,7 +136,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({ image, originalIma
     if (dragging === 'top') newLines.top = Math.max(0, Math.min(lines.bottom - 0.01, y));
     if (dragging === 'bottom') newLines.bottom = Math.max(lines.top + 0.01, Math.min(1, y));
 
-    setLines(newLines);
+    onLinesChange(newLines);
     
     // Calculate ratios excluding margins
     const mx = 0.02;
