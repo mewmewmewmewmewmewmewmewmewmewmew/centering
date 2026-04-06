@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { Upload, Spline, RotateCcw, Instagram, Download, Sun, Contrast, Palette } from 'lucide-react';
+import { Upload, Spline, RotateCcw, Instagram, Download, Sun, Contrast, Palette, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDropzone } from 'react-dropzone';
 import ReactGA from 'react-ga4';
@@ -119,6 +119,7 @@ export default function App() {
   );
   const [filters, setFilters] = useState({ brightness: 0, contrast: 0, saturation: 0, curvature: 0, barrelCurvature: 0 });
   const [isSaving, setIsSaving] = useState(false);
+  const [isCopying, setIsCopying] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
   const [lines, setLines] = useState(() => {
@@ -182,6 +183,98 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  const handleCopyToClipboard = async () => {
+    if (!exportRef.current || isCopying) return;
+    setIsCopying(true);
+    
+    const node = exportRef.current;
+    const glossBoxes = node.querySelectorAll('.gloss-box');
+    const originalFilters = new Map<Element, string>();
+    
+    try {
+      const { toBlob } = await import('html-to-image');
+      
+      // Temporarily disable backdrop-filter as it often breaks html-to-image
+      originalFilters.set(node, node.style.backdropFilter);
+      node.style.backdropFilter = 'none';
+      
+      glossBoxes.forEach(box => {
+        if (box instanceof HTMLElement) {
+          originalFilters.set(box, box.style.backdropFilter);
+          box.style.backdropFilter = 'none';
+        }
+      });
+      
+      // Wait for any transitions to settle and for the style change to apply
+      await new Promise(resolve => setTimeout(resolve, 600));
+
+      // Try to generate the image
+      const blob = await toBlob(node, {
+        backgroundColor: '#1a1a1a',
+        pixelRatio: 2,
+        cacheBust: true,
+        style: {
+          borderRadius: '0',
+          transform: 'none',
+          margin: '0',
+          backdropFilter: 'none'
+        }
+      });
+
+      if (!blob || blob.size < 100) {
+        throw new Error('Generated image is empty or too small');
+      }
+
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          [blob.type]: blob
+        })
+      ]);
+
+      // Track copy event
+      ReactGA.event({
+        category: 'Image',
+        action: 'Copy',
+        label: 'Centering Result'
+      });
+    } catch (err) {
+      console.error('Copy failed:', err);
+      // If it fails, try one more time without pixelRatio
+      try {
+        const { toBlob } = await import('html-to-image');
+        const blob = await toBlob(node, {
+          backgroundColor: '#1a1a1a',
+          cacheBust: true,
+          style: {
+            borderRadius: '0',
+            transform: 'none',
+            margin: '0',
+            backdropFilter: 'none'
+          }
+        });
+        if (blob) {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              [blob.type]: blob
+            })
+          ]);
+          return;
+        }
+      } catch (innerErr) {
+        console.error('Fallback copy also failed:', innerErr);
+      }
+      alert('Failed to copy image to clipboard. Please try saving it instead.');
+    } finally {
+      // Restore original styles
+      originalFilters.forEach((filter, element) => {
+        if (element instanceof HTMLElement) {
+          element.style.backdropFilter = filter;
+        }
+      });
+      setIsCopying(false);
+    }
+  };
 
   const handleSaveImage = async () => {
     if (!exportRef.current || isSaving) return;
@@ -700,7 +793,7 @@ export default function App() {
                           </div>
                           
                           {flattenedImage && (
-                            <div className="hidden md:flex justify-center mt-2">
+                            <div className="hidden md:flex justify-center mt-2 gap-4">
                               <button 
                                 onClick={handleSaveImage}
                                 disabled={isSaving}
@@ -714,6 +807,22 @@ export default function App() {
                                 ) : (
                                   <>
                                     <Download className="w-3 h-3" /> save image
+                                  </>
+                                )}
+                              </button>
+                              <button 
+                                onClick={handleCopyToClipboard}
+                                disabled={isCopying}
+                                className={cn(
+                                  "text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5",
+                                  isCopying ? "text-white/40 cursor-wait" : "text-[#e6bbd4] hover:text-[#e6bbd4]/80 active:scale-[0.98]"
+                                )}
+                              >
+                                {isCopying ? (
+                                  "Copying..."
+                                ) : (
+                                  <>
+                                    <Copy className="w-3 h-3" /> copy to clipboard
                                   </>
                                 )}
                               </button>
