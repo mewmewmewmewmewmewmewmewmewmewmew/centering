@@ -50,12 +50,14 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   }, []);
 
   useEffect(() => {
-    if (containerSize.width && containerSize.height && !linesInitialized) {
-      setLinesInitialized(true);
+    if (containerSize.width && containerSize.height) {
+      if (!linesInitialized) setLinesInitialized(true);
 
-      // Report initial ratios
+      // Calculate current ratios based on lines and margins
       const mx = 0.02;
       const my = (containerSize.width * 0.02) / containerSize.height;
+      
+      // Calculate current ratios based on actual border distances from the edges
       const innerLeft = Math.max(0, lines.left - mx);
       const innerRight = Math.max(0, (1 - mx) - lines.right);
       const innerTop = Math.max(0, lines.top - my);
@@ -67,10 +69,13 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
       const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
       
-      lastRatiosRef.current = { lr: lrRatio, tb: tbRatio };
-      onRatiosChange(lrRatio, tbRatio);
+      // Only report if changed significantly to reduce parent re-renders
+      if (Math.abs(lrRatio - lastRatiosRef.current.lr) > 0.01 || Math.abs(tbRatio - lastRatiosRef.current.tb) > 0.01) {
+        lastRatiosRef.current = { lr: lrRatio, tb: tbRatio };
+        onRatiosChange(lrRatio, tbRatio);
+      }
     }
-  }, [containerSize, linesInitialized, onRatiosChange, lines]);
+  }, [containerSize, onRatiosChange, lines, linesInitialized]);
 
   const handleMouseDown = (side: string) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -80,12 +85,16 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       const x = ((e.clientX - rect.left) / rect.width) * 100;
       const y = ((e.clientY - rect.top) / rect.height) * 100;
       
+      const mx = 0.02;
+      const my = containerSize.height > 0 ? (containerSize.width * 0.02) / containerSize.height : 0.02;
+      
       let zX = x;
       let zY = y;
-      if (side === 'left') zX = 0;
-      if (side === 'right') zX = 100;
-      if (side === 'top') zY = 0;
-      if (side === 'bottom') zY = 100;
+      // Adjust origin so the card edge aligns with the container edge when scaled by 2x
+      if (side === 'left') zX = mx * 200;
+      if (side === 'right') zX = (1 - 2 * mx) * 100;
+      if (side === 'top') zY = my * 200;
+      if (side === 'bottom') zY = (1 - 2 * my) * 100;
       
       setZoomOrigin({ x: zX, y: zY });
     }
@@ -100,12 +109,16 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       const x = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
       const y = ((e.touches[0].clientY - rect.top) / rect.height) * 100;
       
+      const mx = 0.02;
+      const my = containerSize.height > 0 ? (containerSize.width * 0.02) / containerSize.height : 0.02;
+      
       let zX = x;
       let zY = y;
-      if (side === 'left') zX = 0;
-      if (side === 'right') zX = 100;
-      if (side === 'top') zY = 0;
-      if (side === 'bottom') zY = 100;
+      // Adjust origin so the card edge aligns with the container edge when scaled by 2x
+      if (side === 'left') zX = mx * 200;
+      if (side === 'right') zX = (1 - 2 * mx) * 100;
+      if (side === 'top') zY = my * 200;
+      if (side === 'bottom') zY = (1 - 2 * my) * 100;
       
       setZoomOrigin({ x: zX, y: zY });
       setDragging(side);
@@ -125,12 +138,16 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     if (!dragging) return;
 
     // Update zoomOrigin dynamically while dragging to keep the edge flush
+    const mx = 0.02;
+    const my = containerSize.height > 0 ? (containerSize.width * 0.02) / containerSize.height : 0.02;
+    
     let zX = x * 100;
     let zY = y * 100;
-    if (dragging === 'left') zX = 0;
-    if (dragging === 'right') zX = 100;
-    if (dragging === 'top') zY = 0;
-    if (dragging === 'bottom') zY = 100;
+    // Adjust origin so the card edge aligns with the container edge when scaled by 2x
+    if (dragging === 'left') zX = mx * 200;
+    if (dragging === 'right') zX = (1 - 2 * mx) * 100;
+    if (dragging === 'top') zY = my * 200;
+    if (dragging === 'bottom') zY = (1 - 2 * my) * 100;
     setZoomOrigin({ x: zX, y: zY });
 
     const newLines = { ...lines };
@@ -140,29 +157,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     if (dragging === 'bottom') newLines.bottom = Math.max(lines.top + 0.01, Math.min(1, y));
 
     onLinesChange(newLines);
-    
-    // Calculate ratios excluding margins
-    const mx = 0.02;
-    const my = containerSize.width && containerSize.height 
-      ? (containerSize.width * 0.02) / containerSize.height 
-      : 0.02;
-
-    const innerLeft = Math.max(0, newLines.left - mx);
-    const innerRight = Math.max(0, (1 - mx) - newLines.right);
-    const innerTop = Math.max(0, newLines.top - my);
-    const innerBottom = Math.max(0, (1 - my) - newLines.bottom);
-
-    const lrTotal = innerLeft + innerRight;
-    const tbTotal = innerTop + innerBottom;
-
-    const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
-    const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
-
-    // Only report if changed significantly to reduce parent re-renders
-    if (Math.abs(lrRatio - lastRatiosRef.current.lr) > 0.1 || Math.abs(tbRatio - lastRatiosRef.current.tb) > 0.1) {
-      lastRatiosRef.current = { lr: lrRatio, tb: tbRatio };
-      onRatiosChange(lrRatio, tbRatio);
-    }
   };
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -204,7 +198,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
 
   return (
     <div 
-      className="absolute inset-0 flex items-center justify-center bg-black/60"
+      className="absolute inset-0 flex items-center justify-center bg-black/60 overflow-hidden"
       style={{ borderRadius: `${outerRadiusPx}px` }}
       onMouseMove={handleMouseMove}
       onTouchMove={handleTouchMove}
