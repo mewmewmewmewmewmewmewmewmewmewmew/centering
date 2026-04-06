@@ -90,11 +90,11 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       
       let zX = x;
       let zY = y;
-      // Adjust origin so the card edge aligns with the container edge when scaled by 2x
-      if (side === 'left') zX = mx * 200;
-      if (side === 'right') zX = (1 - 2 * mx) * 100;
-      if (side === 'top') zY = my * 200;
-      if (side === 'bottom') zY = (1 - 2 * my) * 100;
+      // Adjust origin so the absolute edge of the image aligns with the container edge
+      if (side === 'left') zX = 0;
+      if (side === 'right') zX = 100;
+      if (side === 'top') zY = 0;
+      if (side === 'bottom') zY = 100;
       
       setZoomOrigin({ x: zX, y: zY });
     }
@@ -114,11 +114,11 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       
       let zX = x;
       let zY = y;
-      // Adjust origin so the card edge aligns with the container edge when scaled by 2x
-      if (side === 'left') zX = mx * 200;
-      if (side === 'right') zX = (1 - 2 * mx) * 100;
-      if (side === 'top') zY = my * 200;
-      if (side === 'bottom') zY = (1 - 2 * my) * 100;
+      // Adjust origin so the absolute edge of the image aligns with the container edge
+      if (side === 'left') zX = 0;
+      if (side === 'right') zX = 100;
+      if (side === 'top') zY = 0;
+      if (side === 'bottom') zY = 100;
       
       setZoomOrigin({ x: zX, y: zY });
       setDragging(side);
@@ -143,18 +143,18 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     
     let zX = x * 100;
     let zY = y * 100;
-    // Adjust origin so the card edge aligns with the container edge when scaled by 2x
-    if (dragging === 'left') zX = mx * 200;
-    if (dragging === 'right') zX = (1 - 2 * mx) * 100;
-    if (dragging === 'top') zY = my * 200;
-    if (dragging === 'bottom') zY = (1 - 2 * my) * 100;
+    // Adjust origin so the absolute edge of the image aligns with the container edge
+    if (dragging === 'left') zX = 0;
+    if (dragging === 'right') zX = 100;
+    if (dragging === 'top') zY = 0;
+    if (dragging === 'bottom') zY = 100;
     setZoomOrigin({ x: zX, y: zY });
 
     const newLines = { ...lines };
-    if (dragging === 'left') newLines.left = Math.max(0, Math.min(lines.right - 0.01, x));
-    if (dragging === 'right') newLines.right = Math.max(lines.left + 0.01, Math.min(1, x));
-    if (dragging === 'top') newLines.top = Math.max(0, Math.min(lines.bottom - 0.01, y));
-    if (dragging === 'bottom') newLines.bottom = Math.max(lines.top + 0.01, Math.min(1, y));
+    if (dragging === 'left') newLines.left = Math.max(mx, Math.min(lines.right - 0.01, x));
+    if (dragging === 'right') newLines.right = Math.max(lines.left + 0.01, Math.min(1 - mx, x));
+    if (dragging === 'top') newLines.top = Math.max(my, Math.min(lines.bottom - 0.01, y));
+    if (dragging === 'bottom') newLines.bottom = Math.max(lines.top + 0.01, Math.min(1 - my, y));
 
     onLinesChange(newLines);
   };
