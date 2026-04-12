@@ -12,6 +12,33 @@ export interface Point {
 
 export const CARD_RATIO = 63 / 88; // Standard trading card ratio (63x88mm)
 
+// v4.35 - Pixel-perfect export constants
+export const EXPORT_WIDTH = 1260;
+export const EXPORT_HEIGHT = 1760;
+export const MARGIN_PX = 25; // Exact pixel margin for deadzone
+export const MX = MARGIN_PX / EXPORT_WIDTH;
+export const MY = MARGIN_PX / EXPORT_HEIGHT;
+
+export function getPixelPerfectRatios(lines: { left: number; right: number; top: number; bottom: number }) {
+  const leftPx = Math.round(lines.left * EXPORT_WIDTH);
+  const rightPx = Math.round(lines.right * EXPORT_WIDTH);
+  const topPx = Math.round(lines.top * EXPORT_HEIGHT);
+  const bottomPx = Math.round(lines.bottom * EXPORT_HEIGHT);
+
+  const innerLeft = Math.max(0, leftPx - MARGIN_PX);
+  const innerRight = Math.max(0, (EXPORT_WIDTH - MARGIN_PX) - rightPx);
+  const innerTop = Math.max(0, topPx - MARGIN_PX);
+  const innerBottom = Math.max(0, (EXPORT_HEIGHT - MARGIN_PX) - bottomPx);
+  
+  const lrTotal = innerLeft + innerRight;
+  const tbTotal = innerTop + innerBottom;
+  
+  return {
+    lr: lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50,
+    tb: tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50
+  };
+}
+
 export function getPerspectiveInterpolation(corners: Point[]) {
   const x0 = corners[0].x, y0 = corners[0].y;
   const x1 = corners[1].x, y1 = corners[1].y;

@@ -6,7 +6,7 @@ import ReactGA from 'react-ga4';
 import { CornerSelector } from './components/CornerSelector';
 import { CardFlattener } from './components/CardFlattener';
 import { CenteringTool } from './components/CenteringTool';
-import { Point, cn } from './lib/utils';
+import { Point, cn, MX, MY, getPixelPerfectRatios } from './lib/utils';
 
 type Step = 'upload' | 'analysis' | 'results';
 
@@ -93,7 +93,6 @@ export default function App() {
   const [selectionMode, setSelectionMode] = useState<'drag' | 'sequential'>('drag');
   const [showStep1Overlay, setShowStep1Overlay] = useState(() => !localStorage.getItem('mew_step1_seen'));
   const [showStep2Overlay, setShowStep2Overlay] = useState(() => !localStorage.getItem('mew_step2_seen'));
-  const [ratios, setRatios] = useState({ lr: 50, tb: 50 });
 
   const HandCursor = ({ className }: { className?: string }) => (
     <motion.div 
@@ -123,8 +122,8 @@ export default function App() {
   const exportRef = useRef<HTMLDivElement>(null);
 
   const [lines, setLines] = useState(() => {
-    const mx = 0.02;
-    const my = (63 * 0.02) / 88;
+    const mx = MX;
+    const my = MY;
     const cardW = 1 - 2 * mx;
     const cardH = 1 - 2 * my;
     const DEFAULT_OFFSET = 0.03;
@@ -135,6 +134,9 @@ export default function App() {
       bottom: (1 - my) - (cardH * DEFAULT_OFFSET)
     };
   });
+
+  // v4.46 - Derive ratios directly from lines for perfect sync
+  const ratios = getPixelPerfectRatios(lines);
 
   const [history, setHistory] = useState<{ 
     corners: Point[], 
@@ -679,7 +681,7 @@ export default function App() {
                                   <CenteringTool 
                                     image={flattenedImage} 
                                     originalImage={image!}
-                                    onRatiosChange={(lr, tb) => setRatios({ lr, tb })} 
+                                    ratios={ratios} 
                                     filters={filters}
                                     lines={lines}
                                     onLinesChange={setLines}

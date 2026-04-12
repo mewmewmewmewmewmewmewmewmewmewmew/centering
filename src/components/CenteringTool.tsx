@@ -1,11 +1,11 @@
 // v4.27 - Centering Tool Refinements
 import React, { useState, useRef, useEffect } from 'react';
-import { cn } from '../lib/utils';
+import { cn, MX, MY, EXPORT_WIDTH, EXPORT_HEIGHT, MARGIN_PX } from '../lib/utils';
 
 interface CenteringToolProps {
   image: string;
   originalImage: string;
-  onRatiosChange: (lr: number, tb: number) => void;
+  ratios: { lr: number; tb: number };
   filters?: { brightness: number; contrast: number; saturation: number; curvature: number };
   lines: { left: number; right: number; top: number; bottom: number };
   onLinesChange: (lines: { left: number; right: number; top: number; bottom: number }) => void;
@@ -15,23 +15,24 @@ interface CenteringToolProps {
 export const CenteringTool: React.FC<CenteringToolProps> = ({ 
   image, 
   originalImage, 
-  onRatiosChange, 
+  ratios, 
   filters,
   lines,
   onLinesChange,
   onDragStart
 }) => {
-  const MARGIN = 0.02;
-  const CARD_SIZE = 0.96; // 1 - 2 * MARGIN
   const DEFAULT_OFFSET = 0.03;
 
   const [linesInitialized, setLinesInitialized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState<string | null>(null);
-  const lastRatiosRef = useRef({ lr: 0, tb: 0 });
 
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
+
+  // v4.35 - Using pixel-perfect constants
+  const mx = MX;
+  const my = MY;
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -52,30 +53,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   useEffect(() => {
     if (containerSize.width && containerSize.height) {
       if (!linesInitialized) setLinesInitialized(true);
-
-      // Calculate current ratios based on lines and margins
-      const mx = 0.02;
-      const my = (containerSize.width * 0.02) / containerSize.height;
-      
-      // Calculate current ratios based on actual border distances from the edges
-      const innerLeft = Math.max(0, lines.left - mx);
-      const innerRight = Math.max(0, (1 - mx) - lines.right);
-      const innerTop = Math.max(0, lines.top - my);
-      const innerBottom = Math.max(0, (1 - my) - lines.bottom);
-      
-      const lrTotal = innerLeft + innerRight;
-      const tbTotal = innerTop + innerBottom;
-      
-      const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
-      const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
-      
-      // Only report if changed significantly to reduce parent re-renders
-      if (Math.abs(lrRatio - lastRatiosRef.current.lr) > 0.01 || Math.abs(tbRatio - lastRatiosRef.current.tb) > 0.01) {
-        lastRatiosRef.current = { lr: lrRatio, tb: tbRatio };
-        onRatiosChange(lrRatio, tbRatio);
-      }
     }
-  }, [containerSize, onRatiosChange, lines, linesInitialized]);
+  }, [containerSize, linesInitialized]);
 
   const handleMouseDown = (side: string) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -84,9 +63,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       const rect = containerRef.current.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
       const y = ((e.clientY - rect.top) / rect.height) * 100;
-      
-      const mx = 0.02;
-      const my = containerSize.height > 0 ? (containerSize.width * 0.02) / containerSize.height : 0.02;
       
       let zX = x;
       let zY = y;
@@ -109,9 +85,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       const x = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
       const y = ((e.touches[0].clientY - rect.top) / rect.height) * 100;
       
-      const mx = 0.02;
-      const my = containerSize.height > 0 ? (containerSize.width * 0.02) / containerSize.height : 0.02;
-      
       let zX = x;
       let zY = y;
       // Adjust origin so the absolute edge of the image aligns with the container edge
@@ -128,8 +101,9 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   const onMove = (clientX: number, clientY: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const x = (clientX - rect.left) / rect.width;
-    const y = (clientY - rect.top) / rect.height;
+    // v4.40 - Snap dragging to the pixel grid of the export resolution
+    const x = Math.round(((clientX - rect.left) / rect.width) * EXPORT_WIDTH) / EXPORT_WIDTH;
+    const y = Math.round(((clientY - rect.top) / rect.height) * EXPORT_HEIGHT) / EXPORT_HEIGHT;
     
     // Update CSS variables for mouse tracking to avoid React re-renders
     containerRef.current.style.setProperty('--mouse-x', `${x * 100}%`);
@@ -137,10 +111,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
 
     if (!dragging) return;
 
-    // Update zoomOrigin dynamically while dragging to keep the edge flush
-    const mx = 0.02;
-    const my = containerSize.height > 0 ? (containerSize.width * 0.02) / containerSize.height : 0.02;
-    
     let zX = x * 100;
     let zY = y * 100;
     // Adjust origin so the absolute edge of the image aligns with the container edge
@@ -151,13 +121,47 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     setZoomOrigin({ x: zX, y: zY });
 
     const newLines = { ...lines };
-    if (dragging === 'left') newLines.left = Math.max(mx, Math.min(lines.right - 0.01, x));
-    if (dragging === 'right') newLines.right = Math.max(lines.left + 0.01, Math.min(1 - mx, x));
-    if (dragging === 'top') newLines.top = Math.max(my, Math.min(lines.bottom - 0.01, y));
-    if (dragging === 'bottom') newLines.bottom = Math.max(lines.top + 0.01, Math.min(1 - my, y));
+
+    if (dragging === 'left') {
+      newLines.left = Math.max(mx, Math.min(lines.right - 0.01, x));
+    }
+    if (dragging === 'right') {
+      newLines.right = Math.max(lines.left + 0.01, Math.min(1 - mx, x));
+    }
+    if (dragging === 'top') {
+      newLines.top = Math.max(my, Math.min(lines.bottom - 0.01, y));
+    }
+    if (dragging === 'bottom') {
+      newLines.bottom = Math.max(lines.top + 0.01, Math.min(1 - my, y));
+    }
 
     onLinesChange(newLines);
   };
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!dragging) return;
+      // v4.39 - Keyboard nudging is now exactly 1 pixel of the export resolution
+      const stepX = e.shiftKey ? 10 / EXPORT_WIDTH : 1 / EXPORT_WIDTH;
+      const stepY = e.shiftKey ? 10 / EXPORT_HEIGHT : 1 / EXPORT_HEIGHT;
+      const newLines = { ...lines };
+      
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const dir = e.key === 'ArrowLeft' ? -1 : 1;
+        if (dragging === 'left') newLines.left = Math.max(mx, Math.min(lines.right - 0.01, lines.left + dir * stepX));
+        if (dragging === 'right') newLines.right = Math.max(lines.left + 0.01, Math.min(1 - mx, lines.right + dir * stepX));
+        onLinesChange(newLines);
+      }
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        const dir = e.key === 'ArrowUp' ? -1 : 1;
+        if (dragging === 'top') newLines.top = Math.max(my, Math.min(lines.bottom - 0.01, lines.top + dir * stepY));
+        if (dragging === 'bottom') newLines.bottom = Math.max(lines.top + 0.01, Math.min(1 - my, lines.bottom + dir * stepY));
+        onLinesChange(newLines);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [dragging, lines, mx, my, onLinesChange]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     onMove(e.clientX, e.clientY);
@@ -175,30 +179,16 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   const handleMouseUp = () => setDragging(null);
   const handleTouchEnd = () => setDragging(null);
 
-    // Proportional margins to ensure equal pixel thickness on all sides
-    const mx = 0.02;
-    const my = containerSize.width && containerSize.height 
-      ? (containerSize.width * 0.02) / containerSize.height 
-      : 0.02;
-
     const cardWidthPx = containerSize.width * (1 - 2 * mx);
     const cardRadiusPx = cardWidthPx * 0.05; 
-    const outerRadiusPx = cardRadiusPx + (containerSize.width * 0.02);
+    const outerRadiusPx = cardRadiusPx + (containerSize.width * mx);
 
-    const innerLeft = Math.max(0, lines.left - mx);
-    const innerRight = Math.max(0, (1 - mx) - lines.right);
-    const innerTop = Math.max(0, lines.top - my);
-    const innerBottom = Math.max(0, (1 - my) - lines.bottom);
-
-    const lrTotal = innerLeft + innerRight;
-    const tbTotal = innerTop + innerBottom;
-
-    const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
-    const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
+    const lrRatio = ratios.lr;
+    const tbRatio = ratios.tb;
 
   return (
     <div 
-      className="absolute inset-0 flex items-center justify-center bg-black/60 overflow-hidden"
+      className="absolute inset-0 bg-black/60 overflow-hidden"
       style={{ borderRadius: `${outerRadiusPx}px` }}
       onMouseMove={handleMouseMove}
       onTouchMove={handleTouchMove}
@@ -215,15 +205,15 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       />
 
       {/* Card Container (Zoomed Out with buffer) */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+      <div className="absolute inset-0 pointer-events-none">
             <div 
               ref={containerRef}
               className={cn(
-                "absolute inset-0 overflow-visible select-none cursor-default flex items-center justify-center touch-none pointer-events-auto",
+                "absolute inset-0 overflow-visible select-none cursor-default touch-none pointer-events-auto",
                 !dragging && "transition-transform duration-200"
               )}
               style={{
-                transform: dragging ? 'scale(2)' : 'scale(1)',
+                transform: dragging ? 'scale(4)' : 'scale(1)',
                 transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
                 borderRadius: `${outerRadiusPx}px`
               }}
@@ -231,7 +221,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
               <img 
                 key={image} // Force re-render when image changes
                 src={image} 
-                className="w-full h-full block pointer-events-none shadow-2xl object-cover" 
+                className="absolute inset-0 w-full h-full block pointer-events-none shadow-2xl" 
                 alt="Flattened card" 
                 style={{
                   filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none',
@@ -300,19 +290,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
             />
           </svg>
           
-          {/* Overlay for borders */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div 
-              className="absolute inset-0 bg-red-600/5" 
-              style={{ 
-                left: `${lines.left * 100}%`, 
-                right: `${(1 - lines.right) * 100}%`, 
-                top: `${lines.top * 100}%`, 
-                bottom: `${(1 - lines.bottom) * 100}%`,
-                borderRadius: `${cardRadiusPx}px` // Add radius to border overlay
-              }} 
-            />
-          </div>
+          {/* Overlay for borders - Removed semi-transparent fill to ensure guides are clear */}
+          <div className="absolute inset-0 pointer-events-none" />
 
           {/* Draggable Lines */}
           {['left', 'right', 'top', 'bottom'].map((side) => {
@@ -326,40 +305,40 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                 onMouseDown={handleMouseDown(side)}
                 onTouchStart={handleTouchStart(side)}
                 className={cn(
-                  "absolute cursor-pointer group",
-                  isVertical ? "top-0 bottom-0 w-4 -ml-2" : "left-0 right-0 h-4 -mt-2"
+                  "absolute cursor-pointer group z-20",
+                  isVertical ? "top-0 bottom-0 w-8 -ml-4" : "left-0 right-0 h-8 -mt-4"
                 )}
                 style={{ 
                   [isVertical ? 'left' : 'top']: `${value * 100}%`,
                   zIndex: isDragging ? 50 : 10
                 }}
               >
-                {/* The actual thin line */}
+                {/* Visual Line - 1px thick visually even when zoomed, centered on the coordinate */}
                 <div 
                   className={cn(
-                    "absolute bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.3)]",
-                    !dragging && "transition-all",
-                    isVertical ? "left-1/2 h-full -translate-x-1/2" : "top-1/2 w-full -translate-y-1/2"
-                  )} 
+                    "absolute",
+                    isVertical ? "left-1/2 top-0 bottom-0 w-[1px]" : "top-1/2 left-0 right-0 h-[1px]",
+                    isDragging ? "bg-[#ff0000]" : "bg-[#dc2626] group-hover:bg-[#ff0000]"
+                  )}
                   style={{
-                    width: isVertical ? (dragging ? '1px' : '2px') : '100%',
-                    height: isVertical ? '100%' : (dragging ? '1px' : '2px'),
                     transform: isVertical 
-                      ? `translateX(-50%) ${dragging ? 'scaleX(0.5)' : 'scaleX(1)'}` 
-                      : `translateY(-50%) ${dragging ? 'scaleY(0.5)' : 'scaleY(1)'}`
+                      ? `translateX(-50%) scaleX(${dragging ? 0.25 : 1})` 
+                      : `translateY(-50%) scaleY(${dragging ? 0.25 : 1})`,
+                    transformOrigin: 'center'
                   }}
                 />
                 
-                {/* The thickened segment that follows the mouse */}
+                {/* Streamlined Handle - Follows cursor and looks like a thicker line segment */}
                 <div 
                   className={cn(
-                    "absolute bg-red-600 rounded-full transition-opacity opacity-0 group-hover:opacity-100",
-                    isVertical ? "left-1/2 w-1 h-12" : "top-1/2 h-1 w-12",
-                    isDragging && "opacity-100 shadow-[0_0_10px_rgba(220,38,38,0.6)]"
+                    "absolute bg-[#ff0000] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-[0_0_10px_rgba(255,0,0,0.4)] rounded-full",
+                    isVertical ? "left-1/2 w-[4px] h-12" : "top-1/2 h-[4px] w-12"
                   )}
                   style={{
                     [isVertical ? 'top' : 'left']: isVertical ? 'var(--mouse-y)' : 'var(--mouse-x)',
-                    transform: 'translate(-50%, -50%)'
+                    transform: isVertical 
+                      ? `translate(-50%, -50%) scaleX(${dragging ? 0.25 : 1})` 
+                      : `translate(-50%, -50%) scaleY(${dragging ? 0.25 : 1})`,
                   }}
                 />
               </div>
@@ -374,13 +353,23 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
           {(dragging === 'left' || dragging === 'right') && (
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">L/R</span>
-              <span className="text-xs font-mono font-bold text-[#ef4444]">{lrRatio.toFixed(1)}:{ (100 - lrRatio).toFixed(1) }</span>
+              <span className={cn(
+                "text-xs font-mono font-bold transition-colors",
+                Math.abs(lrRatio - 50) < 0.01 ? "text-green-400" : "text-[#ef4444]"
+              )}>
+                {lrRatio.toFixed(1)}:{ (100 - lrRatio).toFixed(1) }
+              </span>
             </div>
           )}
           {(dragging === 'top' || dragging === 'bottom') && (
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">T/B</span>
-              <span className="text-xs font-mono font-bold text-[#ef4444]">{tbRatio.toFixed(1)}:{ (100 - tbRatio).toFixed(1) }</span>
+              <span className={cn(
+                "text-xs font-mono font-bold transition-colors",
+                Math.abs(tbRatio - 50) < 0.01 ? "text-green-400" : "text-[#ef4444]"
+              )}>
+                {tbRatio.toFixed(1)}:{ (100 - tbRatio).toFixed(1) }
+              </span>
             </div>
           )}
         </div>
