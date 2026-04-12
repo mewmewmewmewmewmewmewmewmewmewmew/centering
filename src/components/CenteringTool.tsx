@@ -1,6 +1,47 @@
-// v4.27 - Centering Tool Refinements
-import React, { useState, useRef, useEffect } from 'react';
+// v4.47 - Mobile Performance Optimization
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { cn, MX, MY, EXPORT_WIDTH, EXPORT_HEIGHT, MARGIN_PX } from '../lib/utils';
+
+// Memoized Card Outline to avoid expensive SVG re-renders
+const CardOutline = React.memo(({ mx, my, outerRadiusPx, cardRadiusPx, dragging }: { 
+  mx: number, my: number, outerRadiusPx: number, cardRadiusPx: number, dragging: boolean 
+}) => (
+  <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+    <defs>
+      <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
+        <rect width="2" height="6" fill="#f97316" opacity="0.8" />
+      </pattern>
+      <mask id="cardMask">
+        <rect x="0" y="0" width="100%" height="100%" rx={outerRadiusPx} ry={outerRadiusPx} fill="white" />
+        <rect 
+          x={`${mx * 100}%`} 
+          y={`${my * 100}%`} 
+          width={`${(1 - 2 * mx) * 100}%`} 
+          height={`${(1 - 2 * my) * 100}%`} 
+          rx={cardRadiusPx} 
+          ry={cardRadiusPx} 
+          fill="black" 
+        />
+      </mask>
+    </defs>
+    <rect x="-5%" y="-5%" width="110%" height="110%" fill="black" opacity="0.5" mask="url(#cardMask)" />
+    <rect x="-5%" y="-5%" width="110%" height="110%" fill="url(#diagonalHatch)" mask="url(#cardMask)" />
+    <rect 
+      x={`${mx * 100}%`} 
+      y={`${my * 100}%`} 
+      width={`${(1 - 2 * mx) * 100}%`} 
+      height={`${(1 - 2 * my) * 100}%`} 
+      rx={cardRadiusPx} 
+      ry={cardRadiusPx}
+      fill="none"
+      stroke="#dc2626"
+      strokeWidth="1"
+      className={cn(!dragging && "transition-all duration-200")}
+    />
+  </svg>
+));
+
+CardOutline.displayName = 'CardOutline';
 
 interface CenteringToolProps {
   image: string;
@@ -98,45 +139,57 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     }
   };
 
+  const moveRaf = useRef<number | null>(null);
+
   const onMove = (clientX: number, clientY: number) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    // v4.40 - Snap dragging to the pixel grid of the export resolution
-    const x = Math.round(((clientX - rect.left) / rect.width) * EXPORT_WIDTH) / EXPORT_WIDTH;
-    const y = Math.round(((clientY - rect.top) / rect.height) * EXPORT_HEIGHT) / EXPORT_HEIGHT;
-    
-    // Update CSS variables for mouse tracking to avoid React re-renders
-    containerRef.current.style.setProperty('--mouse-x', `${x * 100}%`);
-    containerRef.current.style.setProperty('--mouse-y', `${y * 100}%`);
+    if (moveRaf.current) cancelAnimationFrame(moveRaf.current);
 
-    if (!dragging) return;
+    moveRaf.current = requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      // v4.40 - Snap dragging to the pixel grid of the export resolution
+      const x = Math.round(((clientX - rect.left) / rect.width) * EXPORT_WIDTH) / EXPORT_WIDTH;
+      const y = Math.round(((clientY - rect.top) / rect.height) * EXPORT_HEIGHT) / EXPORT_HEIGHT;
+      
+      // Update CSS variables for mouse tracking to avoid React re-renders
+      containerRef.current.style.setProperty('--mouse-x', `${x * 100}%`);
+      containerRef.current.style.setProperty('--mouse-y', `${y * 100}%`);
 
-    let zX = x * 100;
-    let zY = y * 100;
-    // Adjust origin so the absolute edge of the image aligns with the container edge
-    if (dragging === 'left') zX = 0;
-    if (dragging === 'right') zX = 100;
-    if (dragging === 'top') zY = 0;
-    if (dragging === 'bottom') zY = 100;
-    setZoomOrigin({ x: zX, y: zY });
+      if (!dragging) return;
 
-    const newLines = { ...lines };
+      let zX = x * 100;
+      let zY = y * 100;
+      // Adjust origin so the absolute edge of the image aligns with the container edge
+      if (dragging === 'left') zX = 0;
+      if (dragging === 'right') zX = 100;
+      if (dragging === 'top') zY = 0;
+      if (dragging === 'bottom') zY = 100;
+      setZoomOrigin({ x: zX, y: zY });
 
-    if (dragging === 'left') {
-      newLines.left = Math.max(mx, Math.min(lines.right - 0.01, x));
-    }
-    if (dragging === 'right') {
-      newLines.right = Math.max(lines.left + 0.01, Math.min(1 - mx, x));
-    }
-    if (dragging === 'top') {
-      newLines.top = Math.max(my, Math.min(lines.bottom - 0.01, y));
-    }
-    if (dragging === 'bottom') {
-      newLines.bottom = Math.max(lines.top + 0.01, Math.min(1 - my, y));
-    }
+      const newLines = { ...lines };
 
-    onLinesChange(newLines);
+      if (dragging === 'left') {
+        newLines.left = Math.max(mx, Math.min(lines.right - 0.01, x));
+      }
+      if (dragging === 'right') {
+        newLines.right = Math.max(lines.left + 0.01, Math.min(1 - mx, x));
+      }
+      if (dragging === 'top') {
+        newLines.top = Math.max(my, Math.min(lines.bottom - 0.01, y));
+      }
+      if (dragging === 'bottom') {
+        newLines.bottom = Math.max(lines.top + 0.01, Math.min(1 - my, y));
+      }
+
+      onLinesChange(newLines);
+    });
   };
+
+  useEffect(() => {
+    return () => {
+      if (moveRaf.current) cancelAnimationFrame(moveRaf.current);
+    };
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -215,7 +268,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
               style={{
                 transform: dragging ? 'scale(4)' : 'scale(1)',
                 transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
-                borderRadius: `${outerRadiusPx}px`
+                borderRadius: `${outerRadiusPx}px`,
+                willChange: 'transform'
               }}
             >
               <img 
@@ -225,70 +279,19 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                 alt="Flattened card" 
                 style={{
                   filter: filters ? `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)` : 'none',
-                  borderRadius: `${outerRadiusPx}px`
+                  borderRadius: `${outerRadiusPx}px`,
+                  willChange: 'filter'
                 }}
               />
 
           {/* Fixed Card Outline (at proportional margin) - Using SVG for sub-pixel precision */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-            <defs>
-              <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
-                <rect width="2" height="6" fill="#f97316" opacity="0.8" />
-              </pattern>
-              <mask id="cardMask">
-                <rect 
-                  x="0" 
-                  y="0" 
-                  width="100%" 
-                  height="100%" 
-                  rx={outerRadiusPx} 
-                  ry={outerRadiusPx} 
-                  fill="white" 
-                />
-                <rect 
-                  x={`${mx * 100}%`} 
-                  y={`${my * 100}%`} 
-                  width={`${(1 - 2 * mx) * 100}%`} 
-                  height={`${(1 - 2 * my) * 100}%`} 
-                  rx={cardRadiusPx} 
-                  ry={cardRadiusPx} 
-                  fill="black" 
-                />
-              </mask>
-            </defs>
-            
-            {/* Diagonal Pattern for Outside Area */}
-            <rect 
-              x="-5%" 
-              y="-5%" 
-              width="110%" 
-              height="110%" 
-              fill="black" 
-              opacity="0.5"
-              mask="url(#cardMask)"
-            />
-            <rect 
-              x="-5%" 
-              y="-5%" 
-              width="110%" 
-              height="110%" 
-              fill="url(#diagonalHatch)" 
-              mask="url(#cardMask)"
-            />
-
-            <rect 
-              x={`${mx * 100}%`} 
-              y={`${my * 100}%`} 
-              width={`${(1 - 2 * mx) * 100}%`} 
-              height={`${(1 - 2 * my) * 100}%`} 
-              rx={cardRadiusPx} 
-              ry={cardRadiusPx}
-              fill="none"
-              stroke="#dc2626" // red-600
-              strokeWidth="1"
-              className={cn(!dragging && "transition-all duration-200")}
-            />
-          </svg>
+          <CardOutline 
+            mx={mx} 
+            my={my} 
+            outerRadiusPx={outerRadiusPx} 
+            cardRadiusPx={cardRadiusPx} 
+            dragging={!!dragging} 
+          />
           
           {/* Overlay for borders - Removed semi-transparent fill to ensure guides are clear */}
           <div className="absolute inset-0 pointer-events-none" />

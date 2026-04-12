@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Upload, Spline, RotateCcw, Instagram, Download, Sun, Contrast, Palette, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDropzone } from 'react-dropzone';
@@ -49,6 +49,195 @@ const Curve2Icon = ({ className }: { className?: string }) => (
     />
   </svg>
 );
+
+// v4.48 - Performance Optimized Centering Workspace
+const CenteringWorkspace = React.memo(({ 
+  flattenedImage, 
+  image, 
+  filters, 
+  pushToHistory,
+  logoBase64,
+  handleSaveImage,
+  handleCopyToClipboard,
+  isSaving,
+  isCopying,
+  getGrade,
+  exportRef,
+  showStep2Overlay,
+  setShowStep2Overlay,
+  HandCursor
+}: {
+  flattenedImage: string | null;
+  image: string;
+  filters: any;
+  pushToHistory: () => void;
+  logoBase64: string | null;
+  handleSaveImage: () => void;
+  handleCopyToClipboard: () => void;
+  isSaving: boolean;
+  isCopying: boolean;
+  getGrade: (ratio: number, company: 'PSA' | 'BGS' | 'CGC') => { grade: string, color: string };
+  exportRef: React.RefObject<HTMLDivElement | null>;
+  showStep2Overlay: boolean;
+  setShowStep2Overlay: (show: boolean) => void;
+  HandCursor: React.FC<{ className?: string }>;
+}) => {
+  const [lines, setLines] = useState(() => {
+    const mx = MX;
+    const my = MY;
+    const cardW = 1 - 2 * mx;
+    const cardH = 1 - 2 * my;
+    const DEFAULT_OFFSET = 0.03;
+    return {
+      left: mx + (cardW * DEFAULT_OFFSET),
+      right: (1 - mx) - (cardW * DEFAULT_OFFSET),
+      top: my + (cardH * DEFAULT_OFFSET),
+      bottom: (1 - my) - (cardH * DEFAULT_OFFSET)
+    };
+  });
+
+  const ratios = useMemo(() => getPixelPerfectRatios(lines), [lines]);
+
+  return (
+    <div className="w-full md:flex-1 min-w-0 min-h-0 flex flex-col space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-[10px] font-bold uppercase tracking-widest">
+          <span className="text-[#e6bbd4]">2.</span> <span className="text-white/60">Centering</span>
+        </h3>
+      </div>
+      <div className="flex flex-col min-h-0">
+        <div className="flex flex-col min-h-0">
+          <div ref={exportRef} className="p-2 pb-4 rounded-[24px] sm:rounded-[43px] flex flex-col gap-3 gloss-box relative overflow-visible" style={{ willChange: 'transform' }}>
+            <div className="w-full relative rounded-[16px] sm:rounded-[35px] shrink-0" style={{ paddingBottom: '139.6825%' }}>
+              <div className="absolute inset-0">
+                {flattenedImage ? (
+                  <CenteringTool 
+                    image={flattenedImage} 
+                    originalImage={image}
+                    ratios={ratios} 
+                    filters={filters}
+                    lines={lines}
+                    onLinesChange={setLines}
+                    onDragStart={pushToHistory}
+                  />
+                ) : (
+                  <div className="relative h-full w-full flex items-center justify-center">
+                    <div className="h-full w-full aspect-[63/88] bg-white/5 border border-dashed border-white/10 rounded-[24px] flex items-center justify-center text-white/40 text-[10px] uppercase tracking-widest text-center p-8">
+                      Adjust corners to load
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <AnimatePresence>
+                {flattenedImage && showStep2Overlay && (
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => {
+                      setShowStep2Overlay(false);
+                      localStorage.setItem('mew_step2_seen', 'true');
+                    }}
+                    className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-[16px] sm:rounded-[35px] flex flex-col items-center justify-center p-6 cursor-pointer group"
+                  >
+                    <div className="text-center mb-6">
+                      <p className="text-xs font-black text-[#e6bbd4] uppercase tracking-[0.3em] drop-shadow-lg">Step 2</p>
+                    </div>
+                    <div className="relative w-32 h-32">
+                      <motion.div 
+                        className="absolute top-0 left-1/2 -translate-x-1/2 w-[3px] h-full bg-red-600/80 shadow-[0_0_8px_rgba(220,38,38,0.4)]" 
+                        style={{ willChange: 'transform' }}
+                        animate={{ x: [0, 0, 0, 0, -30, 30, 0] }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                      />
+                      <motion.div
+                        className="absolute top-1/2 left-1/2"
+                        style={{ willChange: 'transform' }}
+                        animate={{ 
+                          x: [-12, -62, 38, -12, -42, 18, -12],
+                          y: [-13, -13, -13, -13, -13, -13, -13]
+                        }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                      >
+                        <HandCursor />
+                      </motion.div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Centering Report Section */}
+            {flattenedImage && (
+              <div className="space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  {(['PSA', 'BGS', 'CGC'] as const).map(company => {
+                    const lrGrade = getGrade(ratios.lr, company);
+                    const tbGrade = getGrade(ratios.tb, company);
+                    const overall = Math.abs(50 - ratios.lr) > Math.abs(50 - ratios.tb) ? lrGrade : tbGrade;
+                    return (
+                      <div key={company} className="flex flex-col items-center gap-1 p-2 rounded-[8px] gloss-box">
+                        <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest">{company}</span>
+                        <span className={cn("text-lg font-black", overall.color)}>{overall.grade}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center justify-around p-2 rounded-[12px] gloss-box">
+                  <div className="flex flex-col items-center">
+                    <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest mb-0.5">Left / Right</span>
+                    <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.lr.toFixed(1)} : {(100 - ratios.lr).toFixed(1)}</span>
+                  </div>
+                  <div className="w-[1px] h-6 bg-white/10" />
+                  <div className="flex flex-col items-center">
+                    <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest mb-0.5">Top / Bottom</span>
+                    <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.tb.toFixed(1)} : {(100 - ratios.tb).toFixed(1)}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 opacity-60 pb-1">
+                  {logoBase64 && (
+                    <img src={logoBase64} className="w-3 h-3 grayscale" alt="" referrerPolicy="no-referrer" />
+                  )}
+                  <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-white">centering.mew.cards</span>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {flattenedImage && (
+            <div className="hidden md:flex justify-center mt-2 gap-4">
+              <button 
+                onClick={handleSaveImage}
+                disabled={isSaving}
+                className={cn(
+                  "text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5",
+                  isSaving ? "text-white/40 cursor-wait" : "text-[#e6bbd4] hover:text-[#e6bbd4]/80 active:scale-[0.98]"
+                )}
+              >
+                {isSaving ? "Saving..." : <><Download className="w-3 h-3" /> save image</>}
+              </button>
+              <button 
+                onClick={handleCopyToClipboard}
+                disabled={isCopying}
+                className={cn(
+                  "text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5",
+                  isCopying ? "text-white/40 cursor-wait" : "text-[#e6bbd4] hover:text-[#e6bbd4]/80 active:scale-[0.98]"
+                )}
+              >
+                {isCopying ? "Copying..." : <><Copy className="w-3 h-3" /> copy to clipboard</>}
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+});
+
+CenteringWorkspace.displayName = 'CenteringWorkspace';
 
 export default function App() {
   const [step, setStep] = useState<Step>('upload');
@@ -121,26 +310,8 @@ export default function App() {
   const [isCopying, setIsCopying] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
-  const [lines, setLines] = useState(() => {
-    const mx = MX;
-    const my = MY;
-    const cardW = 1 - 2 * mx;
-    const cardH = 1 - 2 * my;
-    const DEFAULT_OFFSET = 0.03;
-    return {
-      left: mx + (cardW * DEFAULT_OFFSET),
-      right: (1 - mx) - (cardW * DEFAULT_OFFSET),
-      top: my + (cardH * DEFAULT_OFFSET),
-      bottom: (1 - my) - (cardH * DEFAULT_OFFSET)
-    };
-  });
-
-  // v4.46 - Derive ratios directly from lines for perfect sync
-  const ratios = getPixelPerfectRatios(lines);
-
   const [history, setHistory] = useState<{ 
     corners: Point[], 
-    lines: any,
     seqPoints: Point[],
     seqStep: number,
     seqPhase: 'select_region' | 'select_points',
@@ -157,14 +328,13 @@ export default function App() {
       ...prev,
       { 
         corners: JSON.parse(JSON.stringify(corners)), 
-        lines: { ...lines },
         seqPoints: [...seqPoints],
         seqStep,
         seqPhase,
         currentRegion: currentRegion ? { ...currentRegion } : null
       }
     ].slice(-50));
-  }, [corners, lines, seqPoints, seqStep, seqPhase, currentRegion]);
+  }, [corners, seqPoints, seqStep, seqPhase, currentRegion]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -173,7 +343,6 @@ export default function App() {
           if (prev.length === 0) return prev;
           const lastState = prev[prev.length - 1];
           setCorners(lastState.corners);
-          setLines(lastState.lines);
           setSeqPoints(lastState.seqPoints);
           setSeqStep(lastState.seqStep);
           setSeqPhase(lastState.seqPhase);
@@ -666,173 +835,22 @@ export default function App() {
                     />
                   </div>
 
-                    <div className="w-full md:flex-1 min-w-0 min-h-0 flex flex-col space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-[10px] font-bold uppercase tracking-widest">
-                          <span className="text-[#e6bbd4]">2.</span> <span className="text-white/60">Centering</span>
-                        </h3>
-                      </div>
-                      <div className="flex flex-col min-h-0">
-                        <div className="flex flex-col min-h-0">
-                          <div ref={exportRef} className="p-2 pb-4 rounded-[24px] sm:rounded-[43px] flex flex-col gap-3 gloss-box relative overflow-visible">
-                            <div className="w-full relative rounded-[16px] sm:rounded-[35px] shrink-0" style={{ paddingBottom: '139.6825%' }}>
-                              <div className="absolute inset-0">
-                                {flattenedImage ? (
-                                  <CenteringTool 
-                                    image={flattenedImage} 
-                                    originalImage={image!}
-                                    ratios={ratios} 
-                                    filters={filters}
-                                    lines={lines}
-                                    onLinesChange={setLines}
-                                    onDragStart={pushToHistory}
-                                  />
-                                ) : (
-                                  <div className="relative h-full w-full flex items-center justify-center">
-                                    <div className="h-full w-full aspect-[63/88] bg-white/5 border border-dashed border-white/10 rounded-[24px] flex items-center justify-center text-white/40 text-[10px] uppercase tracking-widest text-center p-8">
-                                      Adjust corners to load
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-
-                              <AnimatePresence>
-                                {flattenedImage && showStep2Overlay && (
-                                  <motion.div 
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    onClick={() => {
-                                      setShowStep2Overlay(false);
-                                      localStorage.setItem('mew_step2_seen', 'true');
-                                    }}
-                                    className="absolute inset-0 z-50 bg-black/70 backdrop-blur-[2px] rounded-[16px] sm:rounded-[35px] flex flex-col items-center justify-center p-6 cursor-pointer group"
-                                  >
-                                    <div className="text-center mb-6">
-                                      <p className="text-xs font-black text-[#e6bbd4] uppercase tracking-[0.3em] drop-shadow-lg">Step 2</p>
-                                    </div>
-                                    <div className="relative w-32 h-32">
-                                      {/* Simulated Red Line - 3px thickness */}
-                                      <motion.div 
-                                        className="absolute top-0 left-1/2 -translate-x-1/2 w-[3px] h-full bg-red-600/80 shadow-[0_0_8px_rgba(220,38,38,0.4)]" 
-                                        style={{ willChange: 'transform' }}
-                                        animate={{ 
-                                          x: [0, 0, 0, 0, -30, 30, 0]
-                                        }}
-                                        transition={{ 
-                                          duration: 4,
-                                          repeat: Infinity,
-                                          ease: "easeInOut"
-                                        }}
-                                      />
-                                      {/* Animated Hand */}
-                                      <motion.div
-                                        className="absolute top-1/2 left-1/2"
-                                        style={{ willChange: 'transform' }}
-                                        animate={{ 
-                                          x: [-12, -62, 38, -12, -42, 18, -12],
-                                          y: [-13, -13, -13, -13, -13, -13, -13] // Offset to align pointer tip with line center
-                                        }}
-                                        transition={{ 
-                                          duration: 4,
-                                          repeat: Infinity,
-                                          ease: "easeInOut"
-                                        }}
-                                      >
-                                        <HandCursor />
-                                      </motion.div>
-                                    </div>
-                                  </motion.div>
-                                )}
-                              </AnimatePresence>
-                            </div>
-
-                            {/* Centering Report Section */}
-                            {flattenedImage && (
-                              <div className="space-y-3">
-                                {/* Row 1: Grades */}
-                                <div className="grid grid-cols-3 gap-2">
-                                  {(['PSA', 'BGS', 'CGC'] as const).map(company => {
-                                    const lrGrade = getGrade(ratios.lr, company);
-                                    const tbGrade = getGrade(ratios.tb, company);
-                                    const overall = Math.abs(50 - ratios.lr) > Math.abs(50 - ratios.tb) ? lrGrade : tbGrade;
-                                    return (
-                                      <div key={company} className="flex flex-col items-center gap-1 p-2 rounded-[8px] gloss-box">
-                                        <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest">{company}</span>
-                                        <span className={cn("text-lg font-black", overall.color)}>{overall.grade}</span>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-
-                                {/* Row 2: Centering Ratios */}
-                                <div className="flex items-center justify-around p-2 rounded-[12px] gloss-box">
-                                  <div className="flex flex-col items-center">
-                                    <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest mb-0.5">Left / Right</span>
-                                    <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.lr.toFixed(1)} : {(100 - ratios.lr).toFixed(1)}</span>
-                                  </div>
-                                  <div className="w-[1px] h-6 bg-white/10" />
-                                  <div className="flex flex-col items-center">
-                                    <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest mb-0.5">Top / Bottom</span>
-                                    <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.tb.toFixed(1)} : {(100 - ratios.tb).toFixed(1)}</span>
-                                  </div>
-                                </div>
-
-                                 {/* Branding */}
-                                <div className="flex items-center justify-center gap-2 opacity-60 pb-1">
-                                  {logoBase64 && (
-                                    <img 
-                                      src={logoBase64} 
-                                      className="w-3 h-3 grayscale" 
-                                      alt="" 
-                                      referrerPolicy="no-referrer"
-                                    />
-                                  )}
-                                  <span className="text-[7px] font-bold uppercase tracking-[0.2em] text-white">centering.mew.cards</span>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {flattenedImage && (
-                            <div className="hidden md:flex justify-center mt-2 gap-4">
-                              <button 
-                                onClick={handleSaveImage}
-                                disabled={isSaving}
-                                className={cn(
-                                  "text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5",
-                                  isSaving ? "text-white/40 cursor-wait" : "text-[#e6bbd4] hover:text-[#e6bbd4]/80 active:scale-[0.98]"
-                                )}
-                              >
-                                {isSaving ? (
-                                  "Saving..."
-                                ) : (
-                                  <>
-                                    <Download className="w-3 h-3" /> save image
-                                  </>
-                                )}
-                              </button>
-                              <button 
-                                onClick={handleCopyToClipboard}
-                                disabled={isCopying}
-                                className={cn(
-                                  "text-[9px] font-bold uppercase tracking-widest transition-all flex items-center gap-1.5",
-                                  isCopying ? "text-white/40 cursor-wait" : "text-[#e6bbd4] hover:text-[#e6bbd4]/80 active:scale-[0.98]"
-                                )}
-                              >
-                                {isCopying ? (
-                                  "Copying..."
-                                ) : (
-                                  <>
-                                    <Copy className="w-3 h-3" /> copy to clipboard
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                    <CenteringWorkspace 
+                      flattenedImage={flattenedImage}
+                      image={image!}
+                      filters={filters}
+                      pushToHistory={pushToHistory}
+                      logoBase64={logoBase64}
+                      handleSaveImage={handleSaveImage}
+                      handleCopyToClipboard={handleCopyToClipboard}
+                      isSaving={isSaving}
+                      isCopying={isCopying}
+                      getGrade={getGrade}
+                      exportRef={exportRef}
+                      showStep2Overlay={showStep2Overlay}
+                      setShowStep2Overlay={setShowStep2Overlay}
+                      HandCursor={HandCursor}
+                    />
                   </div>
                 </motion.div>
               )}
