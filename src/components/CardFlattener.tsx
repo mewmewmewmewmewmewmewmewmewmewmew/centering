@@ -1,6 +1,6 @@
 // v4.27 - Card Flattener Curvature Support + Drag Optimization
 import React, { useRef, useEffect } from 'react';
-import { Point, CARD_RATIO, getPerspectiveInterpolation, EXPORT_WIDTH, EXPORT_HEIGHT, MX, MY } from '../lib/utils';
+import { Point, CARD_RATIO, getPerspectiveInterpolation } from '../lib/utils';
 
 interface CardFlattenerProps {
   image: string;
@@ -39,8 +39,8 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
         
         // Use a high-resolution size that exactly matches 63:88 ratio
         // 1260x1760 is 20x the base 63x88 units
-        const width = EXPORT_WIDTH; 
-        const height = EXPORT_HEIGHT;
+        const width = 1260; 
+        const height = 1760;
         canvas.width = width;
         canvas.height = height;
 
@@ -55,9 +55,9 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
         ctx.restore();
         
         try {
-          // v4.38 - Use higher subdivision (126x176) for 1260x1760 canvas
-          // This ensures each segment is exactly 10x10 pixels
-          drawPerspective(ctx, img, corners, width, height, 126, 176, filters?.curvature || 0, filters?.barrelCurvature || 0);
+          // Use 48x48 subdivision (4608 triangles) for maximum precision with perspective
+          // Note: We don't clear the canvas in drawPerspective anymore to keep the blurred background
+          drawPerspective(ctx, img, corners, width, height, 48, filters?.curvature || 0, filters?.barrelCurvature || 0);
           
           // Small delay before export to ensure GPU finish
           setTimeout(() => {
@@ -107,7 +107,7 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
   );
 };
 
-function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, corners: Point[], targetWidth: number, targetHeight: number, subdivideX: number = 60, subdivideY: number = 80, curvature: number = 0, barrelCurvature: number = 0) {
+function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, corners: Point[], targetWidth: number, targetHeight: number, subdivide: number = 16, curvature: number = 0, barrelCurvature: number = 0) {
   // Removed clearRect to preserve blurred background
   
   // Get the perspective-correct interpolation function
@@ -115,9 +115,9 @@ function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, c
 
   // Add a margin around the card to show context.
   // We want equal pixel thickness on all sides.
-  // v4.35 - Using pixel-perfect constants to avoid rounding errors
-  const mx = MX;
-  const my = MY;
+  // We use 2% of width as the base margin.
+  const mx = 0.02;
+  const my = (targetWidth * 0.02) / targetHeight;
 
   // We need to map target [0, 1] to source [-mx', 1+mx']
   // such that target [mx, 1-mx] maps to source [0, 1]
@@ -129,12 +129,12 @@ function drawPerspective(ctx: CanvasRenderingContext2D, img: HTMLImageElement, c
   const c = curvature * 0.001;
   const c2 = barrelCurvature * 0.001;
 
-  for (let y = 0; y < subdivideY; y++) {
-    for (let x = 0; x < subdivideX; x++) {
-      const u1 = x / subdivideX;
-      const v1 = y / subdivideY;
-      const u2 = (x + 1) / subdivideX;
-      const v2 = (y + 1) / subdivideY;
+  for (let y = 0; y < subdivide; y++) {
+    for (let x = 0; x < subdivide; x++) {
+      const u1 = x / subdivide;
+      const v1 = y / subdivide;
+      const u2 = (x + 1) / subdivide;
+      const v2 = (y + 1) / subdivide;
 
       const mu1 = u1 * (1 + 2 * mx_prime) - mx_prime;
       const mu2 = u2 * (1 + 2 * mx_prime) - mx_prime;
