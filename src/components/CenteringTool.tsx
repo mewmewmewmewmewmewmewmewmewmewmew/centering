@@ -1,6 +1,6 @@
 // v4.27 - Centering Tool Refinements
 import React, { useState, useRef, useEffect } from 'react';
-import { cn } from '../lib/utils';
+import { cn, CARD_RATIO } from '../lib/utils';
 
 interface CenteringToolProps {
   image: string;
@@ -22,10 +22,9 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   onDragStart
 }) => {
   const MARGIN = 0.02;
+  const MY = CARD_RATIO * MARGIN; // Exact vertical margin: equal px on all sides using the card's true aspect ratio
   const CARD_SIZE = 0.96; // 1 - 2 * MARGIN
   const DEFAULT_OFFSET = 0.03;
-
-  const [linesInitialized, setLinesInitialized] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState<string | null>(null);
@@ -50,32 +49,26 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   }, []);
 
   useEffect(() => {
-    if (containerSize.width && containerSize.height) {
-      if (!linesInitialized) setLinesInitialized(true);
+    // MY and MARGIN are constants derived from the card's true aspect ratio (63:88),
+    // matching the exact margins baked into the 1260×1760 flattened image — no
+    // dependency on container pixel dimensions or ResizeObserver timing.
+    const innerLeft = Math.max(0, lines.left - MARGIN);
+    const innerRight = Math.max(0, (1 - MARGIN) - lines.right);
+    const innerTop = Math.max(0, lines.top - MY);
+    const innerBottom = Math.max(0, (1 - MY) - lines.bottom);
 
-      // Calculate current ratios based on lines and margins
-      const mx = 0.02;
-      const my = (containerSize.width * 0.02) / containerSize.height;
-      
-      // Calculate current ratios based on actual border distances from the edges
-      const innerLeft = Math.max(0, lines.left - mx);
-      const innerRight = Math.max(0, (1 - mx) - lines.right);
-      const innerTop = Math.max(0, lines.top - my);
-      const innerBottom = Math.max(0, (1 - my) - lines.bottom);
-      
-      const lrTotal = innerLeft + innerRight;
-      const tbTotal = innerTop + innerBottom;
-      
-      const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
-      const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
-      
-      // Only report if changed significantly to reduce parent re-renders
-      if (Math.abs(lrRatio - lastRatiosRef.current.lr) > 0.01 || Math.abs(tbRatio - lastRatiosRef.current.tb) > 0.01) {
-        lastRatiosRef.current = { lr: lrRatio, tb: tbRatio };
-        onRatiosChange(lrRatio, tbRatio);
-      }
+    const lrTotal = innerLeft + innerRight;
+    const tbTotal = innerTop + innerBottom;
+
+    const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
+    const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
+
+    // Only report if changed significantly to reduce parent re-renders
+    if (Math.abs(lrRatio - lastRatiosRef.current.lr) > 0.01 || Math.abs(tbRatio - lastRatiosRef.current.tb) > 0.01) {
+      lastRatiosRef.current = { lr: lrRatio, tb: tbRatio };
+      onRatiosChange(lrRatio, tbRatio);
     }
-  }, [containerSize, onRatiosChange, lines, linesInitialized]);
+  }, [lines, onRatiosChange]);
 
   const handleMouseDown = (side: string) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -84,10 +77,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       const rect = containerRef.current.getBoundingClientRect();
       const x = ((e.clientX - rect.left) / rect.width) * 100;
       const y = ((e.clientY - rect.top) / rect.height) * 100;
-      
-      const mx = 0.02;
-      const my = containerSize.height > 0 ? (containerSize.width * 0.02) / containerSize.height : 0.02;
-      
+
       let zX = x;
       let zY = y;
       // Adjust origin so the absolute edge of the image aligns with the container edge
@@ -108,10 +98,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       const rect = containerRef.current.getBoundingClientRect();
       const x = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
       const y = ((e.touches[0].clientY - rect.top) / rect.height) * 100;
-      
-      const mx = 0.02;
-      const my = containerSize.height > 0 ? (containerSize.width * 0.02) / containerSize.height : 0.02;
-      
+
       let zX = x;
       let zY = y;
       // Adjust origin so the absolute edge of the image aligns with the container edge
@@ -138,9 +125,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     if (!dragging) return;
 
     // Update zoomOrigin dynamically while dragging to keep the edge flush
-    const mx = 0.02;
-    const my = containerSize.height > 0 ? (containerSize.width * 0.02) / containerSize.height : 0.02;
-    
     let zX = x * 100;
     let zY = y * 100;
     // Adjust origin so the absolute edge of the image aligns with the container edge
@@ -151,10 +135,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     setZoomOrigin({ x: zX, y: zY });
 
     const newLines = { ...lines };
-    if (dragging === 'left') newLines.left = Math.max(mx, Math.min(lines.right - 0.01, x));
-    if (dragging === 'right') newLines.right = Math.max(lines.left + 0.01, Math.min(1 - mx, x));
-    if (dragging === 'top') newLines.top = Math.max(my, Math.min(lines.bottom - 0.01, y));
-    if (dragging === 'bottom') newLines.bottom = Math.max(lines.top + 0.01, Math.min(1 - my, y));
+    if (dragging === 'left') newLines.left = Math.max(MARGIN, Math.min(lines.right - 0.01, x));
+    if (dragging === 'right') newLines.right = Math.max(lines.left + 0.01, Math.min(1 - MARGIN, x));
+    if (dragging === 'top') newLines.top = Math.max(MY, Math.min(lines.bottom - 0.01, y));
+    if (dragging === 'bottom') newLines.bottom = Math.max(lines.top + 0.01, Math.min(1 - MY, y));
 
     onLinesChange(newLines);
   };
@@ -175,20 +159,14 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   const handleMouseUp = () => setDragging(null);
   const handleTouchEnd = () => setDragging(null);
 
-    // Proportional margins to ensure equal pixel thickness on all sides
-    const mx = 0.02;
-    const my = containerSize.width && containerSize.height 
-      ? (containerSize.width * 0.02) / containerSize.height 
-      : 0.02;
+    const cardWidthPx = containerSize.width * (1 - 2 * MARGIN);
+    const cardRadiusPx = cardWidthPx * 0.05;
+    const outerRadiusPx = cardRadiusPx + (containerSize.width * MARGIN);
 
-    const cardWidthPx = containerSize.width * (1 - 2 * mx);
-    const cardRadiusPx = cardWidthPx * 0.05; 
-    const outerRadiusPx = cardRadiusPx + (containerSize.width * 0.02);
-
-    const innerLeft = Math.max(0, lines.left - mx);
-    const innerRight = Math.max(0, (1 - mx) - lines.right);
-    const innerTop = Math.max(0, lines.top - my);
-    const innerBottom = Math.max(0, (1 - my) - lines.bottom);
+    const innerLeft = Math.max(0, lines.left - MARGIN);
+    const innerRight = Math.max(0, (1 - MARGIN) - lines.right);
+    const innerTop = Math.max(0, lines.top - MY);
+    const innerBottom = Math.max(0, (1 - MY) - lines.bottom);
 
     const lrTotal = innerLeft + innerRight;
     const tbTotal = innerTop + innerBottom;
@@ -256,10 +234,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                   fill="white" 
                 />
                 <rect 
-                  x={`${mx * 100}%`} 
-                  y={`${my * 100}%`} 
-                  width={`${(1 - 2 * mx) * 100}%`} 
-                  height={`${(1 - 2 * my) * 100}%`} 
+                  x={`${MARGIN * 100}%`}
+                  y={`${MY * 100}%`}
+                  width={`${(1 - 2 * MARGIN) * 100}%`}
+                  height={`${(1 - 2 * MY) * 100}%`}
                   rx={cardRadiusPx} 
                   ry={cardRadiusPx} 
                   fill="black" 
@@ -286,12 +264,12 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
               mask="url(#cardMask)"
             />
 
-            <rect 
-              x={`${mx * 100}%`} 
-              y={`${my * 100}%`} 
-              width={`${(1 - 2 * mx) * 100}%`} 
-              height={`${(1 - 2 * my) * 100}%`} 
-              rx={cardRadiusPx} 
+            <rect
+              x={`${MARGIN * 100}%`}
+              y={`${MY * 100}%`}
+              width={`${(1 - 2 * MARGIN) * 100}%`}
+              height={`${(1 - 2 * MY) * 100}%`}
+              rx={cardRadiusPx}
               ry={cardRadiusPx}
               fill="none"
               stroke="#dc2626" // red-600
