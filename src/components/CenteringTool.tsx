@@ -1,4 +1,4 @@
-// v4.27 - Centering Tool Refinements
+// v4.28 - Perfect centering measurement (exact card aspect ratio constant)
 import React, { useState, useRef, useEffect } from 'react';
 import { cn, CARD_RATIO } from '../lib/utils';
 
