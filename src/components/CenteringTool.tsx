@@ -1,4 +1,4 @@
-// v4.28 - Perfect centering measurement (exact card aspect ratio constant)
+// v4.27 - Centering Tool Refinements
 import React, { useState, useRef, useEffect } from 'react';
 import { cn, CARD_RATIO } from '../lib/utils';
 
@@ -218,7 +218,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
               />
 
           {/* Fixed Card Outline (at proportional margin) - Using SVG for sub-pixel precision */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
+          <svg
+            className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
+            viewBox={containerSize.width > 0 ? `0 0 ${containerSize.width} ${containerSize.height}` : undefined}
+          >
             <defs>
               <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
                 <rect width="2" height="6" fill="#f97316" opacity="0.8" />
@@ -233,14 +236,14 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                   ry={outerRadiusPx} 
                   fill="white" 
                 />
-                <rect 
-                  x={`${MARGIN * 100}%`}
-                  y={`${MY * 100}%`}
-                  width={`${(1 - 2 * MARGIN) * 100}%`}
-                  height={`${(1 - 2 * MY) * 100}%`}
-                  rx={cardRadiusPx} 
-                  ry={cardRadiusPx} 
-                  fill="black" 
+                <rect
+                  x={containerSize.width > 0 ? containerSize.width * MARGIN : `${MARGIN * 100}%`}
+                  y={containerSize.width > 0 ? containerSize.height * MY : `${MY * 100}%`}
+                  width={containerSize.width > 0 ? containerSize.width * (1 - 2 * MARGIN) : `${(1 - 2 * MARGIN) * 100}%`}
+                  height={containerSize.width > 0 ? containerSize.height * (1 - 2 * MY) : `${(1 - 2 * MY) * 100}%`}
+                  rx={cardRadiusPx}
+                  ry={cardRadiusPx}
+                  fill="black"
                 />
               </mask>
             </defs>
@@ -265,10 +268,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
             />
 
             <rect
-              x={`${MARGIN * 100}%`}
-              y={`${MY * 100}%`}
-              width={`${(1 - 2 * MARGIN) * 100}%`}
-              height={`${(1 - 2 * MY) * 100}%`}
+              x={containerSize.width > 0 ? containerSize.width * MARGIN : `${MARGIN * 100}%`}
+              y={containerSize.width > 0 ? containerSize.height * MY : `${MY * 100}%`}
+              width={containerSize.width > 0 ? containerSize.width * (1 - 2 * MARGIN) : `${(1 - 2 * MARGIN) * 100}%`}
+              height={containerSize.width > 0 ? containerSize.height * (1 - 2 * MY) : `${(1 - 2 * MY) * 100}%`}
               rx={cardRadiusPx}
               ry={cardRadiusPx}
               fill="none"
