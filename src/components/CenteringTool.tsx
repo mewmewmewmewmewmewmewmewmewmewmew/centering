@@ -218,10 +218,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
               />
 
           {/* Fixed Card Outline (at proportional margin) - Using SVG for sub-pixel precision */}
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none overflow-visible"
-            viewBox={containerSize.width > 0 ? `0 0 ${containerSize.width} ${containerSize.height}` : undefined}
-          >
+          <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
             <defs>
               <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="6" height="6" patternTransform="rotate(45)">
                 <rect width="2" height="6" fill="#f97316" opacity="0.8" />
