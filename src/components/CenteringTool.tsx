@@ -1,4 +1,4 @@
-// v4.41 - Counter-scale guide lines during zoom so they stay visually 1px
+// v4.42 - Disable text selection globally to prevent drag interference on mobile
 import React, { useState, useRef, useEffect } from 'react';
 import { cn, CARD_RATIO } from '../lib/utils';
 
@@ -176,8 +176,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
 
   return (
     <div 
-      className="absolute inset-0 flex items-center justify-center bg-black/60 overflow-hidden"
-      style={{ borderRadius: `${outerRadiusPx}px` }}
+      className="absolute inset-0 flex items-center justify-center bg-black/60 overflow-hidden select-none"
+      style={{ borderRadius: `${outerRadiusPx}px`, WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
       onMouseMove={handleMouseMove}
       onTouchMove={handleTouchMove}
       onMouseUp={handleMouseUp}
