@@ -1,4 +1,4 @@
-// v4.40 - Pixel-snap all positions to eliminate sub-pixel anti-alias asymmetry
+// v4.41 - Counter-scale guide lines during zoom so they stay visually 1px
 import React, { useState, useRef, useEffect } from 'react';
 import { cn, CARD_RATIO } from '../lib/utils';
 
@@ -338,8 +338,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                     width: isVertical ? '1px' : '100%',
                     height: isVertical ? '100%' : '1px',
                     transform: isVertical
-                      ? `translateX(-50%)`
-                      : `translateY(-50%)`
+                      ? `translateX(-50%)${dragging ? ' scaleX(0.5)' : ''}`
+                      : `translateY(-50%)${dragging ? ' scaleY(0.5)' : ''}`
                   }}
                 />
                 
