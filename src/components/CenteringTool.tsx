@@ -1,4 +1,4 @@
-// v4.39 - Guide line symmetry: right/bottom use css right/bottom with same % as left/top
+// v4.40 - Pixel-snap all positions to eliminate sub-pixel anti-alias asymmetry
 import React, { useState, useRef, useEffect } from 'react';
 import { cn, CARD_RATIO } from '../lib/utils';
 
@@ -271,10 +271,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
           <div
             className={cn("absolute pointer-events-none", !dragging && "transition-all duration-200")}
             style={{
-              left: `${MARGIN * 100}%`,
-              right: `${MARGIN * 100}%`,
-              top: `${MY * 100}%`,
-              bottom: `${MY * 100}%`,
+              left:   containerSize.width  > 0 ? `${Math.round(containerSize.width  * MARGIN)}px` : `${MARGIN * 100}%`,
+              right:  containerSize.width  > 0 ? `${Math.round(containerSize.width  * MARGIN)}px` : `${MARGIN * 100}%`,
+              top:    containerSize.height > 0 ? `${Math.round(containerSize.height * MY)}px`     : `${MY * 100}%`,
+              bottom: containerSize.height > 0 ? `${Math.round(containerSize.height * MY)}px`     : `${MY * 100}%`,
               borderRadius: `${cardRadiusPx}px`,
               border: '1px solid #dc2626',
             }}
@@ -312,13 +312,20 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                   side === 'top'    && "left-0 right-0 h-4 -mt-2",
                   side === 'bottom' && "left-0 right-0 h-4 -mb-2",
                 )}
-                style={{
-                  ...(side === 'left'   && { left:   `${value * 100}%` }),
-                  ...(side === 'right'  && { right:  `${(1 - value) * 100}%` }),
-                  ...(side === 'top'    && { top:    `${value * 100}%` }),
-                  ...(side === 'bottom' && { bottom: `${(1 - value) * 100}%` }),
-                  zIndex: isDragging ? 50 : 10
-                }}
+                style={(() => {
+                  const W = containerSize.width, H = containerSize.height;
+                  const base = { zIndex: isDragging ? 50 : 10 };
+                  if (W > 0 && H > 0) {
+                    if (side === 'left')   return { ...base, left:   `${Math.round(W * value)}px` };
+                    if (side === 'right')  return { ...base, right:  `${Math.round(W * (1 - value))}px` };
+                    if (side === 'top')    return { ...base, top:    `${Math.round(H * value)}px` };
+                    return                       { ...base, bottom: `${Math.round(H * (1 - value))}px` };
+                  }
+                  if (side === 'left')   return { ...base, left:   `${value * 100}%` };
+                  if (side === 'right')  return { ...base, right:  `${(1 - value) * 100}%` };
+                  if (side === 'top')    return { ...base, top:    `${value * 100}%` };
+                  return                       { ...base, bottom: `${(1 - value) * 100}%` };
+                })()}
               >
                 {/* The actual thin line */}
                 <div 
