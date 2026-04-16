@@ -264,20 +264,22 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
               mask="url(#cardMask)"
             />
 
-            <rect
-              x={containerSize.width > 0 ? containerSize.width * MARGIN : `${MARGIN * 100}%`}
-              y={containerSize.width > 0 ? containerSize.height * MY : `${MY * 100}%`}
-              width={containerSize.width > 0 ? containerSize.width * (1 - 2 * MARGIN) : `${(1 - 2 * MARGIN) * 100}%`}
-              height={containerSize.width > 0 ? containerSize.height * (1 - 2 * MY) : `${(1 - 2 * MY) * 100}%`}
-              rx={cardRadiusPx}
-              ry={cardRadiusPx}
-              fill="none"
-              stroke="#dc2626" // red-600
-              strokeWidth="1"
-              className={cn(!dragging && "transition-all duration-200")}
-            />
           </svg>
-          
+
+          {/* CSS Card Outline — uses CSS left/right/top/bottom so it resolves percentages
+              via the same layout engine as the draggable lines, guaranteeing symmetry */}
+          <div
+            className={cn("absolute pointer-events-none", !dragging && "transition-all duration-200")}
+            style={{
+              left: `${MARGIN * 100}%`,
+              right: `${MARGIN * 100}%`,
+              top: `${MY * 100}%`,
+              bottom: `${MY * 100}%`,
+              borderRadius: `${cardRadiusPx}px`,
+              border: '1px solid #dc2626',
+            }}
+          />
+
           {/* Overlay for borders */}
           <div className="absolute inset-0 pointer-events-none">
             <div 
