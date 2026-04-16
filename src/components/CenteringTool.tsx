@@ -330,8 +330,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                   }}
                 />
                 
-                {/* The thickened segment that follows the mouse */}
-                <div 
+                {/* The thickened segment that follows the mouse — extends inward toward card center */}
+                <div
                   className={cn(
                     "absolute bg-red-600 rounded-full transition-opacity opacity-0 group-hover:opacity-100",
                     isVertical ? "left-1/2 w-1 h-12" : "top-1/2 h-1 w-12",
@@ -339,7 +339,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                   )}
                   style={{
                     [isVertical ? 'top' : 'left']: isVertical ? 'var(--mouse-y)' : 'var(--mouse-x)',
-                    transform: 'translate(-50%, -50%)'
+                    transform: side === 'left'   ? 'translate(0, -50%)'
+                             : side === 'right'  ? 'translate(-100%, -50%)'
+                             : side === 'top'    ? 'translate(-50%, 0)'
+                             :                     'translate(-50%, -100%)'
                   }}
                 />
               </div>
