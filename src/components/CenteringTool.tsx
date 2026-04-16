@@ -322,11 +322,11 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                     isVertical ? "left-1/2 h-full -translate-x-1/2" : "top-1/2 w-full -translate-y-1/2"
                   )} 
                   style={{
-                    width: isVertical ? (dragging ? '1px' : '2px') : '100%',
-                    height: isVertical ? '100%' : (dragging ? '1px' : '2px'),
-                    transform: isVertical 
-                      ? `translateX(-50%) ${dragging ? 'scaleX(0.5)' : 'scaleX(1)'}` 
-                      : `translateY(-50%) ${dragging ? 'scaleY(0.5)' : 'scaleY(1)'}`
+                    width: isVertical ? '1px' : '100%',
+                    height: isVertical ? '100%' : '1px',
+                    transform: isVertical
+                      ? `translateX(-50%)`
+                      : `translateY(-50%)`
                   }}
                 />
                 
