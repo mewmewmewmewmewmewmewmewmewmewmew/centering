@@ -1,4 +1,4 @@
-// v4.27 - Centering Tool Refinements
+// v4.39 - Guide line symmetry: right/bottom use css right/bottom with same % as left/top
 import React, { useState, useRef, useEffect } from 'react';
 import { cn, CARD_RATIO } from '../lib/utils';
 
@@ -301,16 +301,22 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
             const isDragging = dragging === side;
             
             return (
-              <div 
+              <div
                 key={side}
                 onMouseDown={handleMouseDown(side)}
                 onTouchStart={handleTouchStart(side)}
                 className={cn(
                   "absolute cursor-pointer group",
-                  isVertical ? "top-0 bottom-0 w-4 -ml-2" : "left-0 right-0 h-4 -mt-2"
+                  side === 'left'   && "top-0 bottom-0 w-4 -ml-2",
+                  side === 'right'  && "top-0 bottom-0 w-4 -mr-2",
+                  side === 'top'    && "left-0 right-0 h-4 -mt-2",
+                  side === 'bottom' && "left-0 right-0 h-4 -mb-2",
                 )}
-                style={{ 
-                  [isVertical ? 'left' : 'top']: `${value * 100}%`,
+                style={{
+                  ...(side === 'left'   && { left:   `${value * 100}%` }),
+                  ...(side === 'right'  && { right:  `${(1 - value) * 100}%` }),
+                  ...(side === 'top'    && { top:    `${value * 100}%` }),
+                  ...(side === 'bottom' && { bottom: `${(1 - value) * 100}%` }),
                   zIndex: isDragging ? 50 : 10
                 }}
               >
