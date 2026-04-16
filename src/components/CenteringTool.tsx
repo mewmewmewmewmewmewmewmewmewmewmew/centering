@@ -1,4 +1,4 @@
-// v4.42 - Disable text selection globally to prevent drag interference on mobile
+// v4.43 - Non-passive touch listeners to block selection/scroll during drag
 import React, { useState, useRef, useEffect } from 'react';
 import { cn, CARD_RATIO } from '../lib/utils';
 
@@ -26,6 +26,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   const CARD_SIZE = 0.96; // 1 - 2 * MARGIN
   const DEFAULT_OFFSET = 0.03;
   const containerRef = useRef<HTMLDivElement>(null);
+  const outerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState<string | null>(null);
   const lastRatiosRef = useRef({ lr: 0, tb: 0 });
@@ -33,8 +34,20 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
 
   useEffect(() => {
+    const el = outerRef.current;
+    if (!el) return;
+    const block = (e: TouchEvent) => e.preventDefault();
+    el.addEventListener('touchstart', block, { passive: false });
+    el.addEventListener('touchmove', block, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', block);
+      el.removeEventListener('touchmove', block);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!containerRef.current) return;
-    
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         setContainerSize({
@@ -175,7 +188,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
 
   return (
-    <div 
+    <div
+      ref={outerRef}
       className="absolute inset-0 flex items-center justify-center bg-black/60 overflow-hidden select-none"
       style={{ borderRadius: `${outerRadiusPx}px`, WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
       onMouseMove={handleMouseMove}
