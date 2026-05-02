@@ -143,10 +143,10 @@ export function computeGrade(ratio: number, company: GradingCompany): GradeResul
 
 /** Compute LR and TB ratios from guide line positions. */
 export function computeRatio(lines: GuideLines): { lrRatio: number; tbRatio: number } {
-  const innerLeft   = Math.max(0, lines.left  - MARGIN);
-  const innerRight  = Math.max(0, (1 - MARGIN) - lines.right);
-  const innerTop    = Math.max(0, lines.top   - MY);
-  const innerBottom = Math.max(0, (1 - MY)    - lines.bottom);
+  const innerLeft   = lines.left  - MARGIN;
+  const innerRight  = (1 - MARGIN) - lines.right;
+  const innerTop    = lines.top   - MY;
+  const innerBottom = (1 - MY)    - lines.bottom;
 
   const lrTotal = innerLeft + innerRight;
   const tbTotal = innerTop  + innerBottom;
