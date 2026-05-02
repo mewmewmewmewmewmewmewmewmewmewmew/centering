@@ -51,6 +51,7 @@ const Curve2Icon = ({ className }: { className?: string }) => (
 );
 
 export default function App() {
+  const MAINTENANCE_BANNER = false; // set to true to show the maintenance banner
   const [step, setStep] = useState<Step>('upload');
   const [image, setImage] = useState<string | null>(null);
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
@@ -449,7 +450,13 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#101010] text-white font-sans p-4 md:p-6 flex flex-col" onPaste={handlePaste}>
+    <div className="min-h-screen bg-[#101010] text-white font-sans flex flex-col" onPaste={handlePaste}>
+      {MAINTENANCE_BANNER && (
+        <div className="w-full bg-red-600 text-white text-center text-xs font-bold py-2 px-4 tracking-wide">
+          Upgrading site, results may not be accurate during maintenance.
+        </div>
+      )}
+      <div className="p-4 md:p-6 flex flex-col flex-1">
       <div className="max-w-5xl mx-auto w-full flex-1 flex flex-col">
         {/* Header */}
         <header className="flex items-center justify-between mb-6 gloss-box px-4 py-3 rounded-xl">
@@ -849,7 +856,7 @@ export default function App() {
               }}
               className="text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer"
             >
-              v4.44
+              v4.45
             </button>
           </div>
           <div className="flex justify-center items-center gap-6">
@@ -880,5 +887,6 @@ export default function App() {
           <div className="flex justify-end" />
         </footer>
       </div>
-    );
+      </div>
+  );
 }
