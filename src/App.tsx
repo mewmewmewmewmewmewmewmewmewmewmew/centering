@@ -51,7 +51,7 @@ const Curve2Icon = ({ className }: { className?: string }) => (
 );
 
 export default function App() {
-  const MAINTENANCE_BANNER = false; // set to true to show the maintenance banner
+  const MAINTENANCE_BANNER = true; // set to true to show the maintenance banner
   const [step, setStep] = useState<Step>('upload');
   const [image, setImage] = useState<string | null>(null);
   const [logoBase64, setLogoBase64] = useState<string | null>(null);
