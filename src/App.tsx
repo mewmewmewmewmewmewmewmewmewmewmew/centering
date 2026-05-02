@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { Upload, Spline, RotateCcw, Instagram, Download, Sun, Contrast, Palette, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDropzone } from 'react-dropzone';
@@ -7,6 +7,7 @@ import { CornerSelector } from './components/CornerSelector';
 import { CardFlattener } from './components/CardFlattener';
 import { CenteringTool } from './components/CenteringTool';
 import { Point, cn } from './lib/utils';
+import { computeCentering } from './lib/centeringLogic';
 
 type Step = 'upload' | 'analysis' | 'results';
 
@@ -94,8 +95,6 @@ export default function App() {
   const [selectionMode, setSelectionMode] = useState<'drag' | 'sequential'>('drag');
   const [showStep1Overlay, setShowStep1Overlay] = useState(() => !localStorage.getItem('mew_step1_seen'));
   const [showStep2Overlay, setShowStep2Overlay] = useState(() => !localStorage.getItem('mew_step2_seen'));
-  const [ratios, setRatios] = useState({ lr: 50, tb: 50 });
-
   const HandCursor = ({ className }: { className?: string }) => (
     <motion.div 
       className={cn("pointer-events-none z-[60]", className)}
@@ -136,6 +135,8 @@ export default function App() {
       bottom: (1 - my) - (cardH * DEFAULT_OFFSET)
     };
   });
+
+  const centering = useMemo(() => computeCentering(lines), [lines]);
 
   const [history, setHistory] = useState<{ 
     corners: Point[], 
@@ -421,33 +422,6 @@ export default function App() {
     }
   }, []);
 
-  const getGrade = (ratio: number, company: 'PSA' | 'BGS' | 'CGC') => {
-    const diff = Math.abs(50 - ratio);
-    const max = 50 + diff;
-
-    if (company === 'PSA') {
-      if (max <= 55) return { grade: '10', color: 'text-green-400' };
-      if (max <= 60) return { grade: '9', color: 'text-lime-400' };
-      if (max <= 65) return { grade: '8', color: 'text-yellow-300' };
-      if (max <= 70) return { grade: '7', color: 'text-orange-300' };
-      return { grade: '6', color: 'text-orange-500' };
-    }
-    if (company === 'BGS') {
-      if (max <= 50.5) return { grade: 'BL', color: 'text-green-400 font-black' };
-      if (max <= 55) return { grade: '9.5', color: 'text-lime-400' };
-      if (max <= 60) return { grade: '8', color: 'text-yellow-300' };
-      if (max <= 65) return { grade: '7', color: 'text-orange-300' };
-      return { grade: '6', color: 'text-orange-500' };
-    }
-    if (company === 'CGC') {
-      if (max <= 55) return { grade: '10', color: 'text-green-400' };
-      if (max <= 60) return { grade: '9', color: 'text-lime-400' };
-      if (max <= 65) return { grade: '8', color: 'text-yellow-300' };
-      if (max <= 70) return { grade: '7', color: 'text-orange-300' };
-      return { grade: '6', color: 'text-orange-500' };
-    }
-    return { grade: '-', color: '' };
-  };
 
   return (
     <div className="min-h-screen bg-[#101010] text-white font-sans flex flex-col" onPaste={handlePaste}>
@@ -683,10 +657,9 @@ export default function App() {
                             <div className="w-full relative rounded-[16px] sm:rounded-[35px] shrink-0" style={{ paddingBottom: '139.6825%' }}>
                               <div className="absolute inset-0">
                                 {flattenedImage ? (
-                                  <CenteringTool 
-                                    image={flattenedImage} 
+                                  <CenteringTool
+                                    image={flattenedImage}
                                     originalImage={image!}
-                                    onRatiosChange={(lr, tb) => setRatios({ lr, tb })} 
                                     filters={filters}
                                     lines={lines}
                                     onLinesChange={setLines}
@@ -758,9 +731,7 @@ export default function App() {
                                 {/* Row 1: Grades */}
                                 <div className="grid grid-cols-3 gap-2">
                                   {(['PSA', 'BGS', 'CGC'] as const).map(company => {
-                                    const lrGrade = getGrade(ratios.lr, company);
-                                    const tbGrade = getGrade(ratios.tb, company);
-                                    const overall = Math.abs(50 - ratios.lr) > Math.abs(50 - ratios.tb) ? lrGrade : tbGrade;
+                                    const overall = centering.grades[company];
                                     return (
                                       <div key={company} className="flex flex-col items-center gap-1 p-2 rounded-[8px] gloss-box">
                                         <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest">{company}</span>
@@ -774,12 +745,12 @@ export default function App() {
                                 <div className="flex items-center justify-around p-2 rounded-[12px] gloss-box">
                                   <div className="flex flex-col items-center">
                                     <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest mb-0.5">Left / Right</span>
-                                    <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.lr.toFixed(1)} : {(100 - ratios.lr).toFixed(1)}</span>
+                                    <span className="text-xs font-mono font-bold text-[#e6bbd4]">{centering.lrRatio.toFixed(1)} : {(100 - centering.lrRatio).toFixed(1)}</span>
                                   </div>
                                   <div className="w-[1px] h-6 bg-white/10" />
                                   <div className="flex flex-col items-center">
                                     <span className="text-[7px] font-bold text-white/50 uppercase tracking-widest mb-0.5">Top / Bottom</span>
-                                    <span className="text-xs font-mono font-bold text-[#e6bbd4]">{ratios.tb.toFixed(1)} : {(100 - ratios.tb).toFixed(1)}</span>
+                                    <span className="text-xs font-mono font-bold text-[#e6bbd4]">{centering.tbRatio.toFixed(1)} : {(100 - centering.tbRatio).toFixed(1)}</span>
                                   </div>
                                 </div>
 
@@ -856,7 +827,7 @@ export default function App() {
               }}
               className="text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer"
             >
-              v4.45
+              v5.0
             </button>
           </div>
           <div className="flex justify-center items-center gap-6">

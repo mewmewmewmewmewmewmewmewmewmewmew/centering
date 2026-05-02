@@ -1,35 +1,29 @@
-// v4.43 - Non-passive touch listeners to block selection/scroll during drag
+// v5.0 - Logic extracted to centeringLogic.ts
 import React, { useState, useRef, useEffect } from 'react';
-import { cn, CARD_RATIO } from '../lib/utils';
+import { cn } from '../lib/utils';
+import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
 
 interface CenteringToolProps {
   image: string;
   originalImage: string;
-  onRatiosChange: (lr: number, tb: number) => void;
   filters?: { brightness: number; contrast: number; saturation: number; curvature: number };
   lines: { left: number; right: number; top: number; bottom: number };
   onLinesChange: (lines: { left: number; right: number; top: number; bottom: number }) => void;
   onDragStart?: () => void;
 }
 
-export const CenteringTool: React.FC<CenteringToolProps> = ({ 
-  image, 
-  originalImage, 
-  onRatiosChange, 
+export const CenteringTool: React.FC<CenteringToolProps> = ({
+  image,
+  originalImage,
   filters,
   lines,
   onLinesChange,
   onDragStart
 }) => {
-  const MARGIN = 0.02;
-  const MY = CARD_RATIO * MARGIN; // Exact vertical margin: equal px on all sides using the card's true aspect ratio
-  const CARD_SIZE = 0.96; // 1 - 2 * MARGIN
-  const DEFAULT_OFFSET = 0.03;
   const containerRef = useRef<HTMLDivElement>(null);
   const outerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState<string | null>(null);
-  const lastRatiosRef = useRef({ lr: 0, tb: 0 });
 
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
 
@@ -61,27 +55,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     return () => observer.disconnect();
   }, []);
 
-  useEffect(() => {
-    // MY and MARGIN are constants derived from the card's true aspect ratio (63:88),
-    // matching the exact margins baked into the 1260×1760 flattened image — no
-    // dependency on container pixel dimensions or ResizeObserver timing.
-    const innerLeft = Math.max(0, lines.left - MARGIN);
-    const innerRight = Math.max(0, (1 - MARGIN) - lines.right);
-    const innerTop = Math.max(0, lines.top - MY);
-    const innerBottom = Math.max(0, (1 - MY) - lines.bottom);
-
-    const lrTotal = innerLeft + innerRight;
-    const tbTotal = innerTop + innerBottom;
-
-    const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
-    const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
-
-    // Only report if changed significantly to reduce parent re-renders
-    if (Math.abs(lrRatio - lastRatiosRef.current.lr) > 0.01 || Math.abs(tbRatio - lastRatiosRef.current.tb) > 0.01) {
-      lastRatiosRef.current = { lr: lrRatio, tb: tbRatio };
-      onRatiosChange(lrRatio, tbRatio);
-    }
-  }, [lines, onRatiosChange]);
 
   const handleMouseDown = (side: string) => (e: React.MouseEvent) => {
     e.preventDefault();
@@ -176,16 +149,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     const cardRadiusPx = cardWidthPx * 0.05;
     const outerRadiusPx = cardRadiusPx + (containerSize.width * MARGIN);
 
-    const innerLeft = Math.max(0, lines.left - MARGIN);
-    const innerRight = Math.max(0, (1 - MARGIN) - lines.right);
-    const innerTop = Math.max(0, lines.top - MY);
-    const innerBottom = Math.max(0, (1 - MY) - lines.bottom);
-
-    const lrTotal = innerLeft + innerRight;
-    const tbTotal = innerTop + innerBottom;
-
-    const lrRatio = lrTotal > 0 ? (innerLeft / lrTotal) * 100 : 50;
-    const tbRatio = tbTotal > 0 ? (innerTop / tbTotal) * 100 : 50;
+    const { lrRatio, tbRatio } = computeRatio(lines);
 
   return (
     <div
