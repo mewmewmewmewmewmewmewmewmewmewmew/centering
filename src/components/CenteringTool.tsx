@@ -1,10 +1,19 @@
-// v5.9 - Crisp 1px full-opacity guides while zoomed: drawn as screen-space overlay outside the scaled layer
+// v6.0 - Perpendicular cursor movement adjusts zoom level while dragging (eased), within a clamped range
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
 
-// Zoom level while dragging a guide line. Higher = more visual zoom.
-const DRAG_SCALE = 4.8;
+// Zoom level when a drag begins. Higher = more visual zoom.
+const BASE_DRAG_SCALE = 4.8;
+// Range the zoom can be adjusted to via perpendicular cursor movement while dragging.
+const MIN_DRAG_SCALE = 2.5;
+const MAX_DRAG_SCALE = 9;
+// Multiplier applied to perpendicular cursor movement (px) to adjust the zoom
+// level while dragging. Lower = slower zoom response.
+const ZOOM_SENSITIVITY = 0.01;
+// Per-frame easing factor (0-1) for animating toward the target zoom level.
+// Lower = slower, smoother approach.
+const ZOOM_EASE = 0.12;
 // Multiplier applied to cursor movement when updating a guide's position while
 // dragging. Lower = finer control (cursor moves further per unit of guide movement).
 const DRAG_SENSITIVITY = 0.24;
@@ -37,6 +46,12 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   const [dragging, setDragging] = useState<string | null>(null);
 
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
+  // Current (eased) zoom level, applied as the drag-time scale transform.
+  const [zoomScale, setZoomScale] = useState(BASE_DRAG_SCALE);
+  // Target zoom level driven by perpendicular cursor movement; zoomScale eases
+  // toward this each animation frame.
+  const targetZoomRef = useRef(BASE_DRAG_SCALE);
+  const currentZoomRef = useRef(BASE_DRAG_SCALE);
 
   useEffect(() => {
     const el = outerRef.current;
@@ -88,6 +103,9 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       // so the baseline can be seeded right here at mousedown.
       lastPosRef.current = { x: e.clientX, y: e.clientY };
       dragStartValueRef.current = lines[side as keyof typeof lines];
+      targetZoomRef.current = BASE_DRAG_SCALE;
+      currentZoomRef.current = BASE_DRAG_SCALE;
+      setZoomScale(BASE_DRAG_SCALE);
     }
     setDragging(side);
   };
@@ -112,6 +130,9 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       // See handleMouseDown — client-coordinate baseline, safe to seed here.
       lastPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       dragStartValueRef.current = lines[side as keyof typeof lines];
+      targetZoomRef.current = BASE_DRAG_SCALE;
+      currentZoomRef.current = BASE_DRAG_SCALE;
+      setZoomScale(BASE_DRAG_SCALE);
       setDragging(side);
     }
   };
@@ -141,8 +162,18 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     lastPosRef.current = { x: clientX, y: clientY };
     if (!last) return;
 
-    const dx = ((clientX - last.x) / rect.width) * DRAG_SENSITIVITY;
-    const dy = ((clientY - last.y) / rect.height) * DRAG_SENSITIVITY;
+    const rawDx = clientX - last.x;
+    const rawDy = clientY - last.y;
+
+    // Perpendicular cursor movement adjusts the zoom level (eased toward this
+    // target by the animation loop below): for a left/right drag, up zooms in
+    // and down zooms out; for a top/bottom drag, right zooms in and left zooms out.
+    const isHorizontalDrag = dragging === 'left' || dragging === 'right';
+    const zoomDelta = (isHorizontalDrag ? -rawDy : rawDx) * ZOOM_SENSITIVITY;
+    targetZoomRef.current = Math.min(MAX_DRAG_SCALE, Math.max(MIN_DRAG_SCALE, targetZoomRef.current + zoomDelta));
+
+    const dx = (rawDx / rect.width) * DRAG_SENSITIVITY;
+    const dy = (rawDy / rect.height) * DRAG_SENSITIVITY;
 
     const newLines = { ...lines };
     if (dragging === 'left') newLines.left = Math.max(MARGIN, Math.min(lines.right - 0.01, lines.left + dx));
@@ -184,6 +215,24 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       window.removeEventListener('touchend', endDrag);
       window.removeEventListener('touchcancel', endDrag);
     };
+  }, [dragging]);
+
+  // Ease the visual zoom level toward the target set (via perpendicular cursor
+  // movement) in onMove, so zoom changes glide smoothly each frame instead of
+  // jumping straight to the target.
+  useEffect(() => {
+    if (!dragging) return;
+    let raf: number;
+    const tick = () => {
+      const current = currentZoomRef.current;
+      const target = targetZoomRef.current;
+      const next = current + (target - current) * ZOOM_EASE;
+      currentZoomRef.current = next;
+      setZoomScale(next);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
   }, [dragging]);
 
   // Hide the OS cursor while dragging (zoomed in) — the guide line itself
@@ -239,7 +288,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                 !dragging && "transition-transform duration-200"
               )}
               style={{
-                transform: dragging ? `scale(${DRAG_SCALE})` : 'scale(1)',
+                transform: dragging ? `scale(${zoomScale})` : 'scale(1)',
                 transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
                 borderRadius: `${outerRadiusPx}px`
               }}
@@ -438,7 +487,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
           const isVertical = side === 'left' || side === 'right';
           const value = lines[side];
           if (isVertical) {
-            const X = ox + (containerSize.width * value - ox) * DRAG_SCALE;
+            const X = ox + (containerSize.width * value - ox) * zoomScale;
             return (
               <div
                 key={side}
@@ -447,7 +496,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
               />
             );
           }
-          const Y = oy + (containerSize.height * value - oy) * DRAG_SCALE;
+          const Y = oy + (containerSize.height * value - oy) * zoomScale;
           return (
             <div
               key={side}
