@@ -1,4 +1,4 @@
-// v5.3 - Hide cursor while dragging (zoomed); smooth sub-pixel guide-line movement
+// v5.4 - Cursor hiding via global !important rule; transition-smoothed drag motion
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
@@ -80,11 +80,9 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       if (side === 'bottom') zY = 100;
 
       setZoomOrigin({ x: zX, y: zY });
-      // Don't seed lastPosRef here — the upcoming scale/transform-origin change
-      // will shift getBoundingClientRect(), which would register as a huge
-      // spurious delta on the first move. The first onMove call establishes
-      // the baseline post-transform instead.
-      lastPosRef.current = null;
+      // Deltas are computed from raw client coordinates (transform-independent),
+      // so the baseline can be seeded right here at mousedown.
+      lastPosRef.current = { x: e.clientX, y: e.clientY };
     }
     setDragging(side);
   };
@@ -106,8 +104,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       if (side === 'bottom') zY = 100;
 
       setZoomOrigin({ x: zX, y: zY });
-      // See handleMouseDown — defer baseline capture to the first onMove.
-      lastPosRef.current = null;
+      // See handleMouseDown — client-coordinate baseline, safe to seed here.
+      lastPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
       setDragging(side);
     }
   };
@@ -136,12 +134,14 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
 
     // Move the guide by a fraction of the cursor's movement (reduced sensitivity)
     // rather than snapping it directly to the cursor — gives finer control.
+    // Deltas use raw client px (normalized by the scaled container size) so
+    // transform/transform-origin shifts can't inject spurious movement.
     const last = lastPosRef.current;
-    lastPosRef.current = { x, y };
+    lastPosRef.current = { x: clientX, y: clientY };
     if (!last) return;
 
-    const dx = (x - last.x) * DRAG_SENSITIVITY;
-    const dy = (y - last.y) * DRAG_SENSITIVITY;
+    const dx = ((clientX - last.x) / rect.width) * DRAG_SENSITIVITY;
+    const dy = ((clientY - last.y) / rect.height) * DRAG_SENSITIVITY;
 
     const newLines = { ...lines };
     if (dragging === 'left') newLines.left = Math.max(MARGIN, Math.min(lines.right - 0.01, lines.left + dx));
@@ -187,11 +187,13 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
 
   // Hide the OS cursor while dragging (zoomed in) — the red indicator that
   // tracks --mouse-x/--mouse-y serves as the visual pointer instead.
+  // A body class with `* { cursor: none !important }` is required because
+  // per-element cursor classes (cursor-pointer/cursor-default) would override
+  // a plain body style.
   useEffect(() => {
     if (!dragging) return;
-    const prevCursor = document.body.style.cursor;
-    document.body.style.cursor = 'none';
-    return () => { document.body.style.cursor = prevCursor; };
+    document.documentElement.classList.add('drag-hide-cursor');
+    return () => document.documentElement.classList.remove('drag-hide-cursor');
   }, [dragging]);
 
   // Hover tracking only — drag movement is handled by the window listeners above.
@@ -317,15 +319,17 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
 
           {/* Overlay for borders */}
           <div className="absolute inset-0 pointer-events-none">
-            <div 
-              className="absolute inset-0 bg-red-600/5" 
-              style={{ 
-                left: `${lines.left * 100}%`, 
-                right: `${(1 - lines.right) * 100}%`, 
-                top: `${lines.top * 100}%`, 
+            <div
+              className="absolute inset-0 bg-red-600/5"
+              style={{
+                left: `${lines.left * 100}%`,
+                right: `${(1 - lines.right) * 100}%`,
+                top: `${lines.top * 100}%`,
                 bottom: `${(1 - lines.bottom) * 100}%`,
-                borderRadius: `${cardRadiusPx}px` // Add radius to border overlay
-              }} 
+                borderRadius: `${cardRadiusPx}px`, // Add radius to border overlay
+                // Match the dragged line's smoothing so the tinted region tracks it
+                transition: dragging ? 'left 50ms linear, right 50ms linear, top 50ms linear, bottom 50ms linear' : undefined
+              }}
             />
           </div>
 
@@ -349,7 +353,13 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                 )}
                 style={(() => {
                   const W = containerSize.width, H = containerSize.height;
-                  const base = { zIndex: isDragging ? 50 : 10 };
+                  // Short linear transition while dragging interpolates between
+                  // discrete (coalesced) mouse events so the line glides instead
+                  // of stepping — especially visible under the 4x drag zoom.
+                  const base = {
+                    zIndex: isDragging ? 50 : 10,
+                    transition: isDragging ? `${side} 50ms linear` : undefined
+                  };
                   if (W > 0 && H > 0) {
                     // While actively dragging this line, use the precise sub-pixel
                     // position so movement is smooth (no grid-like snapping when

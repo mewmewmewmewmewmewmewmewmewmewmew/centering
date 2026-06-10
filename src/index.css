@@ -15,6 +15,14 @@ html, body {
   -webkit-touch-callout: none;
 }
 
+/* Applied while dragging a centering guide — must beat per-element cursor
+   classes (cursor-pointer, cursor-default), hence the descendant !important.
+   On <html> so it also covers the root canvas outside the body's content. */
+html.drag-hide-cursor,
+html.drag-hide-cursor * {
+  cursor: none !important;
+}
+
 @layer utilities {
   .gloss-box {
     @apply relative overflow-hidden;
