@@ -1,4 +1,4 @@
-// v5.6 - Transform-based line motion while dragging (layout px get renderer-snapped to a 4px visual grid under zoom)
+// v5.7 - Mouse-follow pill is a hover affordance only; hidden while dragging (zoomed in)
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
@@ -186,8 +186,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     };
   }, [dragging]);
 
-  // Hide the OS cursor while dragging (zoomed in) — the red indicator that
-  // tracks --mouse-x/--mouse-y serves as the visual pointer instead.
+  // Hide the OS cursor while dragging (zoomed in) — the guide line itself
+  // serves as the visual pointer.
   // A body class with `* { cursor: none !important }` is required because
   // per-element cursor classes (cursor-pointer/cursor-default) would override
   // a plain body style.
@@ -402,12 +402,14 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                   }}
                 />
                 
-                {/* The thickened segment that follows the mouse — extends inward toward card center */}
+                {/* The thickened segment that follows the mouse — extends inward toward
+                    card center. Hover affordance only: hidden while dragging (zoomed in),
+                    where the line itself shows the position. */}
                 <div
                   className={cn(
-                    "absolute bg-red-600 rounded-full transition-opacity opacity-0 group-hover:opacity-100",
+                    "absolute bg-red-600 rounded-full transition-opacity opacity-0",
                     isVertical ? "left-1/2 w-1 h-12" : "top-1/2 h-1 w-12",
-                    isDragging && "opacity-100 shadow-[0_0_10px_rgba(220,38,38,0.6)]"
+                    !dragging && "group-hover:opacity-100"
                   )}
                   style={{
                     [isVertical ? 'top' : 'left']: isVertical ? 'var(--mouse-y)' : 'var(--mouse-x)',
