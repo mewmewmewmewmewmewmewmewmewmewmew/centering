@@ -1,4 +1,4 @@
-// v5.1 - Increased zoom + reduced drag sensitivity for finer centering control
+// v5.2 - Drag continues outside the image border; releases only on mouseup/touchend
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
@@ -152,21 +152,49 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     onLinesChange(newLines);
   };
 
+  // Keep a ref to the latest onMove so the window-level drag listeners below
+  // always see fresh state without re-attaching on every lines change.
+  const onMoveRef = useRef(onMove);
+  onMoveRef.current = onMove;
+
+  // While dragging, track the pointer on window so the drag continues even
+  // when the cursor leaves the image — it only releases on mouseup/touchend.
+  useEffect(() => {
+    if (!dragging) return;
+
+    const endDrag = () => { setDragging(null); lastPosRef.current = null; };
+    const onWinMouseMove = (e: MouseEvent) => onMoveRef.current(e.clientX, e.clientY);
+    const onWinTouchMove = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        e.preventDefault(); // Prevent scroll while dragging
+        onMoveRef.current(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    };
+
+    window.addEventListener('mousemove', onWinMouseMove);
+    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('touchmove', onWinTouchMove, { passive: false });
+    window.addEventListener('touchend', endDrag);
+    window.addEventListener('touchcancel', endDrag);
+    return () => {
+      window.removeEventListener('mousemove', onWinMouseMove);
+      window.removeEventListener('mouseup', endDrag);
+      window.removeEventListener('touchmove', onWinTouchMove);
+      window.removeEventListener('touchend', endDrag);
+      window.removeEventListener('touchcancel', endDrag);
+    };
+  }, [dragging]);
+
+  // Hover tracking only — drag movement is handled by the window listeners above.
   const handleMouseMove = (e: React.MouseEvent) => {
-    onMove(e.clientX, e.clientY);
+    if (!dragging) onMove(e.clientX, e.clientY);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (e.touches.length > 0) {
-      if (dragging) {
-        e.preventDefault(); // Prevent scroll while dragging
-      }
+    if (!dragging && e.touches.length > 0) {
       onMove(e.touches[0].clientX, e.touches[0].clientY);
     }
   };
-
-  const handleMouseUp = () => { setDragging(null); lastPosRef.current = null; };
-  const handleTouchEnd = () => { setDragging(null); lastPosRef.current = null; };
 
     const cardWidthPx = containerSize.width * (1 - 2 * MARGIN);
     const cardRadiusPx = cardWidthPx * 0.05;
@@ -181,9 +209,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       style={{ borderRadius: `${outerRadiusPx}px`, WebkitUserSelect: 'none', WebkitTouchCallout: 'none' }}
       onMouseMove={handleMouseMove}
       onTouchMove={handleTouchMove}
-      onMouseUp={handleMouseUp}
-      onTouchEnd={handleTouchEnd}
-      onMouseLeave={handleMouseUp}
     >
       {/* Blurred Background Fill */}
       <img 
