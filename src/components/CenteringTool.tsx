@@ -1,4 +1,4 @@
-// v5.8 - Finer drag: zoom 4x -> 4.8x, sensitivity 0.3 -> 0.24
+// v5.9 - Crisp 1px full-opacity guides while zoomed: drawn as screen-space overlay outside the scaled layer
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
@@ -386,19 +386,21 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                   return                       { ...base, bottom: `${(1 - value) * 100}%` };
                 })()}
               >
-                {/* The actual thin line */}
-                <div 
+                {/* The actual thin line. Hidden while dragging — anything painted
+                    inside the scaled container is rasterized at unzoomed resolution
+                    and magnified into a blurry, faint smear, so the screen-space
+                    overlay below draws the guides instead during the zoom. */}
+                <div
                   className={cn(
                     "absolute bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.3)]",
                     !dragging && "transition-all",
                     isVertical ? "left-1/2 h-full -translate-x-1/2" : "top-1/2 w-full -translate-y-1/2"
-                  )} 
+                  )}
                   style={{
                     width: isVertical ? '1px' : '100%',
                     height: isVertical ? '100%' : '1px',
-                    transform: isVertical
-                      ? `translateX(-50%)${dragging ? ` scaleX(${1 / DRAG_SCALE})` : ''}`
-                      : `translateY(-50%)${dragging ? ` scaleY(${1 / DRAG_SCALE})` : ''}`
+                    transform: isVertical ? 'translateX(-50%)' : 'translateY(-50%)',
+                    opacity: dragging ? 0 : undefined
                   }}
                 />
                 
@@ -424,6 +426,37 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
           })}
         </div>
       </div>
+
+      {/* Screen-space guide lines while dragging: drawn outside the scaled
+          container at exactly 1px and full opacity (content inside the zoomed
+          layer rasterizes at unzoomed resolution and magnifies blurry/faint).
+          Position mirrors the zoom transform: p' = origin + (p - origin) * scale. */}
+      {dragging && containerSize.width > 0 && containerSize.height > 0 && (() => {
+        const ox = containerSize.width * (zoomOrigin.x / 100);
+        const oy = containerSize.height * (zoomOrigin.y / 100);
+        return (['left', 'right', 'top', 'bottom'] as const).map((side) => {
+          const isVertical = side === 'left' || side === 'right';
+          const value = lines[side];
+          if (isVertical) {
+            const X = ox + (containerSize.width * value - ox) * DRAG_SCALE;
+            return (
+              <div
+                key={side}
+                className="absolute top-0 bottom-0 w-px bg-red-600 pointer-events-none z-40"
+                style={{ left: `${X}px` }}
+              />
+            );
+          }
+          const Y = oy + (containerSize.height * value - oy) * DRAG_SCALE;
+          return (
+            <div
+              key={side}
+              className="absolute left-0 right-0 h-px bg-red-600 pointer-events-none z-40"
+              style={{ top: `${Y}px` }}
+            />
+          );
+        });
+      })()}
 
       {/* Ratios Overlay (Conditional) - Moved outside scaled container to stay centered in viewport */}
       {dragging && (
