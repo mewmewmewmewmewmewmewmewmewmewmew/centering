@@ -1,7 +1,13 @@
-// v5.0 - Logic extracted to centeringLogic.ts
+// v5.1 - Increased zoom + reduced drag sensitivity for finer centering control
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
+
+// Zoom level while dragging a guide line (was 2x). Higher = more visual zoom.
+const DRAG_SCALE = 4;
+// Multiplier applied to cursor movement when updating a guide's position while
+// dragging. Lower = finer control (cursor moves further per unit of guide movement).
+const DRAG_SENSITIVITY = 0.3;
 
 interface CenteringToolProps {
   image: string;
@@ -22,6 +28,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const outerRef = useRef<HTMLDivElement>(null);
+  const lastPosRef = useRef<{ x: number; y: number } | null>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState<string | null>(null);
 
@@ -61,18 +68,23 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     onDragStart?.();
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
-      const x = ((e.clientX - rect.left) / rect.width) * 100;
-      const y = ((e.clientY - rect.top) / rect.height) * 100;
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
 
-      let zX = x;
-      let zY = y;
+      let zX = x * 100;
+      let zY = y * 100;
       // Adjust origin so the absolute edge of the image aligns with the container edge
       if (side === 'left') zX = 0;
       if (side === 'right') zX = 100;
       if (side === 'top') zY = 0;
       if (side === 'bottom') zY = 100;
-      
+
       setZoomOrigin({ x: zX, y: zY });
+      // Don't seed lastPosRef here — the upcoming scale/transform-origin change
+      // will shift getBoundingClientRect(), which would register as a huge
+      // spurious delta on the first move. The first onMove call establishes
+      // the baseline post-transform instead.
+      lastPosRef.current = null;
     }
     setDragging(side);
   };
@@ -82,18 +94,20 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       e.preventDefault(); // Prevent scroll start
       onDragStart?.();
       const rect = containerRef.current.getBoundingClientRect();
-      const x = ((e.touches[0].clientX - rect.left) / rect.width) * 100;
-      const y = ((e.touches[0].clientY - rect.top) / rect.height) * 100;
+      const x = (e.touches[0].clientX - rect.left) / rect.width;
+      const y = (e.touches[0].clientY - rect.top) / rect.height;
 
-      let zX = x;
-      let zY = y;
+      let zX = x * 100;
+      let zY = y * 100;
       // Adjust origin so the absolute edge of the image aligns with the container edge
       if (side === 'left') zX = 0;
       if (side === 'right') zX = 100;
       if (side === 'top') zY = 0;
       if (side === 'bottom') zY = 100;
-      
+
       setZoomOrigin({ x: zX, y: zY });
+      // See handleMouseDown — defer baseline capture to the first onMove.
+      lastPosRef.current = null;
       setDragging(side);
     }
   };
@@ -120,11 +134,20 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     if (dragging === 'bottom') zY = 100;
     setZoomOrigin({ x: zX, y: zY });
 
+    // Move the guide by a fraction of the cursor's movement (reduced sensitivity)
+    // rather than snapping it directly to the cursor — gives finer control.
+    const last = lastPosRef.current;
+    lastPosRef.current = { x, y };
+    if (!last) return;
+
+    const dx = (x - last.x) * DRAG_SENSITIVITY;
+    const dy = (y - last.y) * DRAG_SENSITIVITY;
+
     const newLines = { ...lines };
-    if (dragging === 'left') newLines.left = Math.max(MARGIN, Math.min(lines.right - 0.01, x));
-    if (dragging === 'right') newLines.right = Math.max(lines.left + 0.01, Math.min(1 - MARGIN, x));
-    if (dragging === 'top') newLines.top = Math.max(MY, Math.min(lines.bottom - 0.01, y));
-    if (dragging === 'bottom') newLines.bottom = Math.max(lines.top + 0.01, Math.min(1 - MY, y));
+    if (dragging === 'left') newLines.left = Math.max(MARGIN, Math.min(lines.right - 0.01, lines.left + dx));
+    if (dragging === 'right') newLines.right = Math.max(lines.left + 0.01, Math.min(1 - MARGIN, lines.right + dx));
+    if (dragging === 'top') newLines.top = Math.max(MY, Math.min(lines.bottom - 0.01, lines.top + dy));
+    if (dragging === 'bottom') newLines.bottom = Math.max(lines.top + 0.01, Math.min(1 - MY, lines.bottom + dy));
 
     onLinesChange(newLines);
   };
@@ -142,8 +165,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     }
   };
 
-  const handleMouseUp = () => setDragging(null);
-  const handleTouchEnd = () => setDragging(null);
+  const handleMouseUp = () => { setDragging(null); lastPosRef.current = null; };
+  const handleTouchEnd = () => { setDragging(null); lastPosRef.current = null; };
 
     const cardWidthPx = containerSize.width * (1 - 2 * MARGIN);
     const cardRadiusPx = cardWidthPx * 0.05;
@@ -179,7 +202,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                 !dragging && "transition-transform duration-200"
               )}
               style={{
-                transform: dragging ? 'scale(2)' : 'scale(1)',
+                transform: dragging ? `scale(${DRAG_SCALE})` : 'scale(1)',
                 transformOrigin: `${zoomOrigin.x}% ${zoomOrigin.y}%`,
                 borderRadius: `${outerRadiusPx}px`
               }}
@@ -316,8 +339,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                     width: isVertical ? '1px' : '100%',
                     height: isVertical ? '100%' : '1px',
                     transform: isVertical
-                      ? `translateX(-50%)${dragging ? ' scaleX(0.5)' : ''}`
-                      : `translateY(-50%)${dragging ? ' scaleY(0.5)' : ''}`
+                      ? `translateX(-50%)${dragging ? ` scaleX(${1 / DRAG_SCALE})` : ''}`
+                      : `translateY(-50%)${dragging ? ` scaleY(${1 / DRAG_SCALE})` : ''}`
                   }}
                 />
                 
