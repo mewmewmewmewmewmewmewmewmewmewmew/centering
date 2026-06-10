@@ -1,4 +1,4 @@
-// v5.5 - Lock perpendicular zoom axis while dragging; remove transitions for direct, smooth drag motion
+// v5.6 - Transform-based line motion while dragging (layout px get renderer-snapped to a 4px visual grid under zoom)
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
@@ -29,6 +29,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const outerRef = useRef<HTMLDivElement>(null);
   const lastPosRef = useRef<{ x: number; y: number } | null>(null);
+  // Line value (0-1) at the moment the drag began — the dragged line's layout
+  // position is frozen here and all movement is applied via transform, which
+  // (unlike left/right) is never pixel-snapped by the renderer.
+  const dragStartValueRef = useRef(0);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState<string | null>(null);
 
@@ -83,6 +87,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       // Deltas are computed from raw client coordinates (transform-independent),
       // so the baseline can be seeded right here at mousedown.
       lastPosRef.current = { x: e.clientX, y: e.clientY };
+      dragStartValueRef.current = lines[side as keyof typeof lines];
     }
     setDragging(side);
   };
@@ -106,6 +111,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       setZoomOrigin({ x: zX, y: zY });
       // See handleMouseDown — client-coordinate baseline, safe to seed here.
       lastPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      dragStartValueRef.current = lines[side as keyof typeof lines];
       setDragging(side);
     }
   };
@@ -346,19 +352,33 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                 )}
                 style={(() => {
                   const W = containerSize.width, H = containerSize.height;
-                  // No transition while dragging — direct per-event updates
-                  // (like CornerSelector) track the cursor without lag.
                   const base = {
                     zIndex: isDragging ? 50 : 10
                   };
                   if (W > 0 && H > 0) {
-                    // While actively dragging this line, use the precise sub-pixel
-                    // position so movement is smooth (no grid-like snapping when
-                    // zoomed in). Snap to whole pixels once released, for symmetry.
-                    if (side === 'left')   return { ...base, left:   `${isDragging ? W * value : Math.round(W * value)}px` };
-                    if (side === 'right')  return { ...base, right:  `${isDragging ? W * (1 - value) : Math.round(W * (1 - value))}px` };
-                    if (side === 'top')    return { ...base, top:    `${isDragging ? H * value : Math.round(H * value)}px` };
-                    return                       { ...base, bottom: `${isDragging ? H * (1 - value) : Math.round(H * (1 - value))}px` };
+                    // While dragging, freeze the layout position at the drag-start
+                    // value and apply all movement via translate. Layout left/right/
+                    // top/bottom get pixel-snapped by the renderer (whole unscaled
+                    // pixels = a 4px visual grid under the drag zoom), but transforms
+                    // composite at float precision, so motion stays sub-pixel smooth.
+                    // Snap to whole pixels once released, for symmetry.
+                    if (isDragging) {
+                      const start = dragStartValueRef.current;
+                      const deltaPx = isVertical ? W * (value - start) : H * (value - start);
+                      const drag = {
+                        ...base,
+                        transform: isVertical ? `translateX(${deltaPx}px)` : `translateY(${deltaPx}px)`,
+                        willChange: 'transform'
+                      };
+                      if (side === 'left')   return { ...drag, left:   `${W * start}px` };
+                      if (side === 'right')  return { ...drag, right:  `${W * (1 - start)}px` };
+                      if (side === 'top')    return { ...drag, top:    `${H * start}px` };
+                      return                       { ...drag, bottom: `${H * (1 - start)}px` };
+                    }
+                    if (side === 'left')   return { ...base, left:   `${Math.round(W * value)}px` };
+                    if (side === 'right')  return { ...base, right:  `${Math.round(W * (1 - value))}px` };
+                    if (side === 'top')    return { ...base, top:    `${Math.round(H * value)}px` };
+                    return                       { ...base, bottom: `${Math.round(H * (1 - value))}px` };
                   }
                   if (side === 'left')   return { ...base, left:   `${value * 100}%` };
                   if (side === 'right')  return { ...base, right:  `${(1 - value) * 100}%` };
