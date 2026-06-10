@@ -1,4 +1,4 @@
-// v5.4 - Cursor hiding via global !important rule; transition-smoothed drag motion
+// v5.5 - Lock perpendicular zoom axis while dragging; remove transitions for direct, smooth drag motion
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
@@ -122,15 +122,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
 
     if (!dragging) return;
 
-    // Update zoomOrigin dynamically while dragging to keep the edge flush
-    let zX = x * 100;
-    let zY = y * 100;
-    // Adjust origin so the absolute edge of the image aligns with the container edge
-    if (dragging === 'left') zX = 0;
-    if (dragging === 'right') zX = 100;
-    if (dragging === 'top') zY = 0;
-    if (dragging === 'bottom') zY = 100;
-    setZoomOrigin({ x: zX, y: zY });
+    // zoomOrigin is intentionally NOT updated here — it stays at the value
+    // set on mousedown, which locks the zoomed viewport along the
+    // perpendicular axis so it doesn't pan based on cursor movement on
+    // that axis while dragging (e.g. dragging left/right won't pan up/down).
 
     // Move the guide by a fraction of the cursor's movement (reduced sensitivity)
     // rather than snapping it directly to the cursor — gives finer control.
@@ -327,8 +322,6 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                 top: `${lines.top * 100}%`,
                 bottom: `${(1 - lines.bottom) * 100}%`,
                 borderRadius: `${cardRadiusPx}px`, // Add radius to border overlay
-                // Match the dragged line's smoothing so the tinted region tracks it
-                transition: dragging ? 'left 50ms linear, right 50ms linear, top 50ms linear, bottom 50ms linear' : undefined
               }}
             />
           </div>
@@ -353,12 +346,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                 )}
                 style={(() => {
                   const W = containerSize.width, H = containerSize.height;
-                  // Short linear transition while dragging interpolates between
-                  // discrete (coalesced) mouse events so the line glides instead
-                  // of stepping — especially visible under the 4x drag zoom.
+                  // No transition while dragging — direct per-event updates
+                  // (like CornerSelector) track the cursor without lag.
                   const base = {
-                    zIndex: isDragging ? 50 : 10,
-                    transition: isDragging ? `${side} 50ms linear` : undefined
+                    zIndex: isDragging ? 50 : 10
                   };
                   if (W > 0 && H > 0) {
                     // While actively dragging this line, use the precise sub-pixel
