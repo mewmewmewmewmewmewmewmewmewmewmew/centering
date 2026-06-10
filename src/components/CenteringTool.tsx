@@ -1,13 +1,13 @@
-// v5.7 - Mouse-follow pill is a hover affordance only; hidden while dragging (zoomed in)
+// v5.8 - Finer drag: zoom 4x -> 4.8x, sensitivity 0.3 -> 0.24
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
 
-// Zoom level while dragging a guide line (was 2x). Higher = more visual zoom.
-const DRAG_SCALE = 4;
+// Zoom level while dragging a guide line. Higher = more visual zoom.
+const DRAG_SCALE = 4.8;
 // Multiplier applied to cursor movement when updating a guide's position while
 // dragging. Lower = finer control (cursor moves further per unit of guide movement).
-const DRAG_SENSITIVITY = 0.3;
+const DRAG_SENSITIVITY = 0.24;
 
 interface CenteringToolProps {
   image: string;
