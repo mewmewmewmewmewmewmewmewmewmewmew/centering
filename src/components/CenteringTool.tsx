@@ -1,4 +1,4 @@
-// v5.2 - Drag continues outside the image border; releases only on mouseup/touchend
+// v5.3 - Hide cursor while dragging (zoomed); smooth sub-pixel guide-line movement
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
@@ -185,6 +185,15 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     };
   }, [dragging]);
 
+  // Hide the OS cursor while dragging (zoomed in) — the red indicator that
+  // tracks --mouse-x/--mouse-y serves as the visual pointer instead.
+  useEffect(() => {
+    if (!dragging) return;
+    const prevCursor = document.body.style.cursor;
+    document.body.style.cursor = 'none';
+    return () => { document.body.style.cursor = prevCursor; };
+  }, [dragging]);
+
   // Hover tracking only — drag movement is handled by the window listeners above.
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!dragging) onMove(e.clientX, e.clientY);
@@ -342,10 +351,13 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                   const W = containerSize.width, H = containerSize.height;
                   const base = { zIndex: isDragging ? 50 : 10 };
                   if (W > 0 && H > 0) {
-                    if (side === 'left')   return { ...base, left:   `${Math.round(W * value)}px` };
-                    if (side === 'right')  return { ...base, right:  `${Math.round(W * (1 - value))}px` };
-                    if (side === 'top')    return { ...base, top:    `${Math.round(H * value)}px` };
-                    return                       { ...base, bottom: `${Math.round(H * (1 - value))}px` };
+                    // While actively dragging this line, use the precise sub-pixel
+                    // position so movement is smooth (no grid-like snapping when
+                    // zoomed in). Snap to whole pixels once released, for symmetry.
+                    if (side === 'left')   return { ...base, left:   `${isDragging ? W * value : Math.round(W * value)}px` };
+                    if (side === 'right')  return { ...base, right:  `${isDragging ? W * (1 - value) : Math.round(W * (1 - value))}px` };
+                    if (side === 'top')    return { ...base, top:    `${isDragging ? H * value : Math.round(H * value)}px` };
+                    return                       { ...base, bottom: `${isDragging ? H * (1 - value) : Math.round(H * (1 - value))}px` };
                   }
                   if (side === 'left')   return { ...base, left:   `${value * 100}%` };
                   if (side === 'right')  return { ...base, right:  `${(1 - value) * 100}%` };
