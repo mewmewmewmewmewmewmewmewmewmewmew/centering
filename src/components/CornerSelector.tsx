@@ -1,4 +1,4 @@
-// v4.28 - Corner Selector Curvature Support + Proxy Canvas Zoom + Mobile Optimizations + Rounded Corners + Sequential Selection
+// v4.29 - Corner guide curve now matches the centering outline's border-radius arc (cubic circle approximation)
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Point, cn, getPerspectiveInterpolation } from '../lib/utils';
@@ -462,9 +462,14 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
     const start = { x: u1.x * radius, y: u1.y * radius };
     const end = { x: u2.x * radius, y: u2.y * radius };
 
-    // Use a quadratic Bezier to approximate the rounded corner
-    // The control point is the corner itself (0,0 in local space)
-    return `M ${start.x},${start.y} Q 0,0 ${end.x},${end.y}`;
+    // Cubic Bezier approximating a circular arc (k = 0.5523 for a 90° arc) so
+    // the curve matches the border-radius rounding used by the centering
+    // outline — a quadratic through the corner point reads visibly sharper
+    // than a true arc of the same radius.
+    const K = 1 - 0.5523;
+    const c1 = { x: u1.x * radius * K, y: u1.y * radius * K };
+    const c2 = { x: u2.x * radius * K, y: u2.y * radius * K };
+    return `M ${start.x},${start.y} C ${c1.x},${c1.y} ${c2.x},${c2.y} ${end.x},${end.y}`;
   };
 
   const r = getDynamicRadius();
