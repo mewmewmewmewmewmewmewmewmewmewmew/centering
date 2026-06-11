@@ -1,4 +1,4 @@
-// v6.2 - Axis guide above the ratio pill while dragging: arrows = move line, magnifiers = zoom axis
+// v6.3 - Axis guide compass: grey cross axis underlies arrow/zoom icons in accent red for clarity
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ZoomIn, ZoomOut } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -530,15 +530,18 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
               arrows = move the line, magnifiers = adjust zoom (perpendicular axis) */}
           {(() => {
             const isHorizontalDrag = dragging === 'left' || dragging === 'right';
-            const ic = "w-3.5 h-3.5 text-white/70";
-            const zc = "w-3 h-3 text-white/40";
+            const ic = "w-3.5 h-3.5 text-[#ef4444] relative z-10";
+            const zc = "w-3 h-3 text-[#ef4444]/60 relative z-10";
             return (
               <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm rounded-2xl border border-white/10 p-1 grid grid-cols-3 grid-rows-3 place-items-center">
+                {/* Grey axis cross underlies the icons so the compass reads clearly */}
+                <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 bg-gray-400/50 z-0" />
+                <div className="absolute top-1/2 left-0 right-0 h-px -translate-y-1/2 bg-gray-400/50 z-0" />
                 <span />
                 {isHorizontalDrag ? <ZoomIn className={zc} /> : <ChevronUp className={ic} />}
                 <span />
                 {isHorizontalDrag ? <ChevronLeft className={ic} /> : <ZoomOut className={zc} />}
-                <span className="w-1 h-1 rounded-full bg-white/30" />
+                <span className="w-1 h-1 rounded-full bg-gray-400/50 relative z-10" />
                 {isHorizontalDrag ? <ChevronRight className={ic} /> : <ZoomIn className={zc} />}
                 <span />
                 {isHorizontalDrag ? <ZoomOut className={zc} /> : <ChevronDown className={ic} />}
