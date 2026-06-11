@@ -1,5 +1,6 @@
-// v6.1 - Add a deadzone to drag-zoom so small perpendicular jitter doesn't trigger zoom changes
+// v6.2 - Axis guide above the ratio pill while dragging: arrows = move line, magnifiers = zoom axis
 import React, { useState, useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ZoomIn, ZoomOut } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
 
@@ -525,6 +526,26 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       {/* Ratios Overlay (Conditional) - Moved outside scaled container to stay centered in viewport */}
       {dragging && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-full border border-white/10 flex gap-3 pointer-events-none z-50">
+          {/* Axis guide: shows what each cursor axis does for the current drag —
+              arrows = move the line, magnifiers = adjust zoom (perpendicular axis) */}
+          {(() => {
+            const isHorizontalDrag = dragging === 'left' || dragging === 'right';
+            const ic = "w-3.5 h-3.5 text-white/70";
+            const zc = "w-3 h-3 text-white/40";
+            return (
+              <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-sm rounded-2xl border border-white/10 p-1 grid grid-cols-3 grid-rows-3 place-items-center">
+                <span />
+                {isHorizontalDrag ? <ZoomIn className={zc} /> : <ChevronUp className={ic} />}
+                <span />
+                {isHorizontalDrag ? <ChevronLeft className={ic} /> : <ZoomOut className={zc} />}
+                <span className="w-1 h-1 rounded-full bg-white/30" />
+                {isHorizontalDrag ? <ChevronRight className={ic} /> : <ZoomIn className={zc} />}
+                <span />
+                {isHorizontalDrag ? <ZoomOut className={zc} /> : <ChevronDown className={ic} />}
+                <span />
+              </div>
+            );
+          })()}
           {(dragging === 'left' || dragging === 'right') && (
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">L/R</span>
