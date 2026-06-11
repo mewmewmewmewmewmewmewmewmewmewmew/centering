@@ -1,4 +1,4 @@
-// v6.5 - Compass guide fades out 2s into a drag once its hint has been seen
+// v6.7 - Mobile drag perf: RAF-coalesced move events, settling zoom loop, no hover bookkeeping while dragging
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ZoomIn, ZoomOut } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -152,14 +152,17 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   const onMove = (clientX: number, clientY: number) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    const x = (clientX - rect.left) / rect.width;
-    const y = (clientY - rect.top) / rect.height;
-    
-    // Update CSS variables for mouse tracking to avoid React re-renders
-    containerRef.current.style.setProperty('--mouse-x', `${x * 100}%`);
-    containerRef.current.style.setProperty('--mouse-y', `${y * 100}%`);
 
-    if (!dragging) return;
+    if (!dragging) {
+      // Hover only: track the pointer for the hover pill via CSS variables
+      // (avoids React re-renders). Skipped while dragging — the pill is hidden
+      // then, and the style invalidation would just burn frame budget.
+      const x = (clientX - rect.left) / rect.width;
+      const y = (clientY - rect.top) / rect.height;
+      containerRef.current.style.setProperty('--mouse-x', `${x * 100}%`);
+      containerRef.current.style.setProperty('--mouse-y', `${y * 100}%`);
+      return;
+    }
 
     // zoomOrigin is intentionally NOT updated here — it stays at the value
     // set on mousedown, which locks the zoomed viewport along the
@@ -209,15 +212,35 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
 
   // While dragging, track the pointer on window so the drag continues even
   // when the cursor leaves the image — it only releases on mouseup/touchend.
+  // Move events are coalesced to one update per animation frame: pointer
+  // events can fire faster than the display refreshes (120Hz+ touch sampling
+  // on phones), and running the full update + React render for each one is
+  // what makes mobile dragging lag. Only the latest position each frame is
+  // visible anyway.
   useEffect(() => {
     if (!dragging) return;
 
+    let pending: { x: number; y: number } | null = null;
+    let moveRaf = 0;
+    const flush = () => {
+      moveRaf = 0;
+      if (pending) {
+        const p = pending;
+        pending = null;
+        onMoveRef.current(p.x, p.y);
+      }
+    };
+    const queueMove = (x: number, y: number) => {
+      pending = { x, y };
+      if (!moveRaf) moveRaf = requestAnimationFrame(flush);
+    };
+
     const endDrag = () => { setDragging(null); lastPosRef.current = null; };
-    const onWinMouseMove = (e: MouseEvent) => onMoveRef.current(e.clientX, e.clientY);
+    const onWinMouseMove = (e: MouseEvent) => queueMove(e.clientX, e.clientY);
     const onWinTouchMove = (e: TouchEvent) => {
       if (e.touches.length > 0) {
         e.preventDefault(); // Prevent scroll while dragging
-        onMoveRef.current(e.touches[0].clientX, e.touches[0].clientY);
+        queueMove(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
 
@@ -227,6 +250,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     window.addEventListener('touchend', endDrag);
     window.addEventListener('touchcancel', endDrag);
     return () => {
+      if (moveRaf) cancelAnimationFrame(moveRaf);
       window.removeEventListener('mousemove', onWinMouseMove);
       window.removeEventListener('mouseup', endDrag);
       window.removeEventListener('touchmove', onWinTouchMove);
@@ -244,9 +268,19 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     const tick = () => {
       const current = currentZoomRef.current;
       const target = targetZoomRef.current;
-      const next = current + (target - current) * ZOOM_EASE;
-      currentZoomRef.current = next;
-      setZoomScale(next);
+      // Settle: exponential easing never exactly reaches the target, so snap
+      // when close and stop calling setState — otherwise the loop forces a
+      // React render every frame for the whole drag, even with the pointer
+      // perfectly still (a big part of mobile drag lag). The loop keeps
+      // running to pick up new targets, but idles without renders.
+      if (Math.abs(target - current) > 0.001) {
+        const next = current + (target - current) * ZOOM_EASE;
+        currentZoomRef.current = next;
+        setZoomScale(next);
+      } else if (current !== target) {
+        currentZoomRef.current = target;
+        setZoomScale(target);
+      }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
