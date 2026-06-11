@@ -1,4 +1,4 @@
-// v6.0 - Perpendicular cursor movement adjusts zoom level while dragging (eased), within a clamped range
+// v6.1 - Add a deadzone to drag-zoom so small perpendicular jitter doesn't trigger zoom changes
 import React, { useState, useRef, useEffect } from 'react';
 import { cn } from '../lib/utils';
 import { computeRatio, MARGIN, MY } from '../lib/centeringLogic';
@@ -11,6 +11,10 @@ const MAX_DRAG_SCALE = 9;
 // Multiplier applied to perpendicular cursor movement (px) to adjust the zoom
 // level while dragging. Lower = slower zoom response.
 const ZOOM_SENSITIVITY = 0.01;
+// Perpendicular cursor movement (px, from the position where the drag started)
+// within this deadzone has no effect on zoom — absorbs small jitter so the
+// zoom doesn't drift on its own while you're just moving the line.
+const ZOOM_DEADZONE = 8;
 // Per-frame easing factor (0-1) for animating toward the target zoom level.
 // Lower = slower, smoother approach.
 const ZOOM_EASE = 0.12;
@@ -52,6 +56,9 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   // toward this each animation frame.
   const targetZoomRef = useRef(BASE_DRAG_SCALE);
   const currentZoomRef = useRef(BASE_DRAG_SCALE);
+  // Perpendicular-axis client coordinate where the drag started — zoom target
+  // is based on cursor displacement from this anchor (see ZOOM_DEADZONE).
+  const perpAnchorRef = useRef(0);
 
   useEffect(() => {
     const el = outerRef.current;
@@ -105,6 +112,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       dragStartValueRef.current = lines[side as keyof typeof lines];
       targetZoomRef.current = BASE_DRAG_SCALE;
       currentZoomRef.current = BASE_DRAG_SCALE;
+      perpAnchorRef.current = (side === 'left' || side === 'right') ? e.clientY : e.clientX;
       setZoomScale(BASE_DRAG_SCALE);
     }
     setDragging(side);
@@ -132,6 +140,7 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
       dragStartValueRef.current = lines[side as keyof typeof lines];
       targetZoomRef.current = BASE_DRAG_SCALE;
       currentZoomRef.current = BASE_DRAG_SCALE;
+      perpAnchorRef.current = (side === 'left' || side === 'right') ? e.touches[0].clientY : e.touches[0].clientX;
       setZoomScale(BASE_DRAG_SCALE);
       setDragging(side);
     }
@@ -168,9 +177,15 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     // Perpendicular cursor movement adjusts the zoom level (eased toward this
     // target by the animation loop below): for a left/right drag, up zooms in
     // and down zooms out; for a top/bottom drag, right zooms in and left zooms out.
+    // Based on total displacement from the drag-start position (not incremental
+    // per-event deltas) so the target is well-defined and the deadzone below
+    // reliably absorbs small jitter around the starting point.
     const isHorizontalDrag = dragging === 'left' || dragging === 'right';
-    const zoomDelta = (isHorizontalDrag ? -rawDy : rawDx) * ZOOM_SENSITIVITY;
-    targetZoomRef.current = Math.min(MAX_DRAG_SCALE, Math.max(MIN_DRAG_SCALE, targetZoomRef.current + zoomDelta));
+    const perpPos = isHorizontalDrag ? clientY : clientX;
+    const perpOffset = perpPos - perpAnchorRef.current;
+    const excess = Math.sign(perpOffset) * Math.max(0, Math.abs(perpOffset) - ZOOM_DEADZONE);
+    const zoomDir = isHorizontalDrag ? -1 : 1;
+    targetZoomRef.current = Math.min(MAX_DRAG_SCALE, Math.max(MIN_DRAG_SCALE, BASE_DRAG_SCALE + zoomDir * excess * ZOOM_SENSITIVITY));
 
     const dx = (rawDx / rect.width) * DRAG_SENSITIVITY;
     const dy = (rawDy / rect.height) * DRAG_SENSITIVITY;
