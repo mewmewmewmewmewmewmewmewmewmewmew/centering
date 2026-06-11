@@ -1,4 +1,4 @@
-// v6.4 - Compass sized to match the ratio pill width; thicker arrow/zoom icon strokes for visibility
+// v6.5 - Compass guide fades out 2s into a drag once its hint has been seen
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ZoomIn, ZoomOut } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -49,6 +49,8 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
   const dragStartValueRef = useRef(0);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const [dragging, setDragging] = useState<string | null>(null);
+  // Compass fades out shortly after a drag begins, once its hint has been seen.
+  const [compassVisible, setCompassVisible] = useState(true);
 
   const [zoomOrigin, setZoomOrigin] = useState({ x: 50, y: 50 });
   // Current (eased) zoom level, applied as the drag-time scale transform.
@@ -249,6 +251,16 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
+  }, [dragging]);
+
+  // Compass guide fades out 2s into a drag — by then the user has seen the hint.
+  useEffect(() => {
+    if (!dragging) {
+      setCompassVisible(true);
+      return;
+    }
+    const timer = setTimeout(() => setCompassVisible(false), 2000);
+    return () => clearTimeout(timer);
   }, [dragging]);
 
   // Hide the OS cursor while dragging (zoomed in) — the guide line itself
@@ -533,7 +545,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
             const ic = "w-5 h-5 text-[#ef4444] relative z-10";
             const zc = "w-4 h-4 text-[#ef4444]/60 relative z-10";
             return (
-              <div className="absolute bottom-full mb-2 left-0 right-0 aspect-square bg-black/60 backdrop-blur-sm rounded-2xl border border-white/10 p-1 grid grid-cols-3 grid-rows-3 place-items-center">
+              <div
+                className="absolute bottom-full mb-2 left-0 right-0 aspect-square bg-black/60 backdrop-blur-sm rounded-2xl border border-white/10 p-1 grid grid-cols-3 grid-rows-3 place-items-center transition-opacity duration-500"
+                style={{ opacity: compassVisible ? 1 : 0 }}
+              >
                 {/* Grey axis cross underlies the icons so the compass reads clearly */}
                 <div className="absolute left-1/2 top-0 bottom-0 w-px -translate-x-1/2 bg-gray-400/50 z-0" />
                 <div className="absolute top-1/2 left-0 right-0 h-px -translate-y-1/2 bg-gray-400/50 z-0" />
