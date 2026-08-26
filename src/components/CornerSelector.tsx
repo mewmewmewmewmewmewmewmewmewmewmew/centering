@@ -1,4 +1,4 @@
-// v4.29 - Corner guide curve now matches the centering outline's border-radius arc (cubic circle approximation)
+// v4.30 - Magnifier clips its source rect manually so edge-of-photo zoom keeps a constant scale (WebKit stretches otherwise)
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Point, cn, getPerspectiveInterpolation } from '../lib/utils';
@@ -22,7 +22,53 @@ interface CornerSelectorProps {
   onCurrentRegionChange: (region: Point | null) => void;
 }
 
-export const CornerSelector: React.FC<CornerSelectorProps> = ({ 
+/**
+ * drawImage with the source rectangle clipped to the image ourselves.
+ *
+ * When a magnifier sits near the edge of the photo its source rectangle runs
+ * off the image. The spec says the destination should be clipped in the same
+ * proportion (so the magnification stays constant and the overflow is simply
+ * not painted), and Chromium does that — but WebKit/iOS Safari clamps the
+ * source rect and stretches it to fill the whole destination instead, which
+ * silently changes the zoom factor right when you're placing a corner
+ * precisely. Doing the intersection here makes every browser agree: the
+ * overflow is left unpainted so the black fill underneath shows through, and
+ * the scale never changes.
+ */
+function drawImageClipped(
+  ctx: CanvasRenderingContext2D,
+  img: CanvasImageSource,
+  imgW: number, imgH: number,
+  sx: number, sy: number, sw: number, sh: number,
+  dx: number, dy: number, dw: number, dh: number
+) {
+  if (sw <= 0 || sh <= 0) return;
+  const scaleX = dw / sw;
+  const scaleY = dh / sh;
+
+  // Intersect the requested source rect with the actual image bounds.
+  const cx1 = Math.max(sx, 0);
+  const cy1 = Math.max(sy, 0);
+  const cx2 = Math.min(sx + sw, imgW);
+  const cy2 = Math.min(sy + sh, imgH);
+  if (cx2 <= cx1 || cy2 <= cy1) return; // entirely off the image — leave it black
+
+  const csw = cx2 - cx1;
+  const csh = cy2 - cy1;
+
+  // Place the surviving slice where it belongs in the destination, at the
+  // original scale, leaving the rest of the destination untouched.
+  ctx.drawImage(
+    img,
+    cx1, cy1, csw, csh,
+    dx + (cx1 - sx) * scaleX,
+    dy + (cy1 - sy) * scaleY,
+    csw * scaleX,
+    csh * scaleY
+  );
+}
+
+export const CornerSelector: React.FC<CornerSelectorProps> = ({
   image, 
   corners, 
   onCornersChange, 
@@ -121,7 +167,10 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
 
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, magSize, magSize);
-    ctx.drawImage(sourceImageRef.current, sx, sy, sw, sh, 0, 0, magSize, magSize);
+    drawImageClipped(
+      ctx, sourceImageRef.current, imgSize.width, imgSize.height,
+      sx, sy, sw, sh, 0, 0, magSize, magSize
+    );
   }, [draggingIdx, corners, imgSize, isMobile, containerSize, selectionMode]);
 
   // Sequential Zoom Effect (High Res Canvas)
@@ -166,7 +215,10 @@ export const CornerSelector: React.FC<CornerSelectorProps> = ({
       ctx.filter = `brightness(${100 + filters.brightness}%) contrast(${100 + filters.contrast}%) saturate(${100 + filters.saturation}%)`;
     }
 
-    ctx.drawImage(sourceImageRef.current, sx, sy, sw, sh, 0, 0, w, h);
+    drawImageClipped(
+      ctx, sourceImageRef.current, imgSize.width, imgSize.height,
+      sx, sy, sw, sh, 0, 0, w, h
+    );
     ctx.filter = 'none';
   }, [selectionMode, seqPhase, currentRegion, panOffset, imgSize, containerSize, filters]);
 
