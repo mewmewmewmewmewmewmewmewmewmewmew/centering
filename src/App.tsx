@@ -92,6 +92,19 @@ export default function App() {
 
   const [flattenedImage, setFlattenedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  // Mobile only: flattening stays off until the user taps "Activate centering".
+  // The panel is stacked below the corner tool (off screen while corners are
+  // being set), so every finger release would otherwise pay for a full flatten
+  // nobody can see. Once activated it stays on for the rest of the session.
+  const [centeringActivated, setCenteringActivated] = useState(false);
+
+  useEffect(() => {
+    setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+  }, []);
+
+  const centeringEnabled = !isMobile || centeringActivated;
+
   const [selectionMode, setSelectionMode] = useState<'drag' | 'sequential'>('drag');
   const [showStep1Overlay, setShowStep1Overlay] = useState(() => !localStorage.getItem('mew_step1_seen'));
   const [showStep2Overlay, setShowStep2Overlay] = useState(() => !localStorage.getItem('mew_step2_seen'));
@@ -636,12 +649,13 @@ export default function App() {
 
                     <div className="h-[18px] mt-2" /> {/* Spacer to align with save link on the right */}
 
-                    <CardFlattener 
-                      image={image!} 
-                      corners={corners} 
-                      onFlattened={setFlattenedImage} 
+                    <CardFlattener
+                      image={image!}
+                      corners={corners}
+                      onFlattened={setFlattenedImage}
                       filters={filters}
                       isDragging={isDragging}
+                      enabled={centeringEnabled}
                     />
                   </div>
 
@@ -656,7 +670,29 @@ export default function App() {
                           <div ref={exportRef} className="p-2 pb-4 rounded-[24px] sm:rounded-[43px] flex flex-col gap-3 gloss-box relative overflow-visible">
                             <div className="w-full relative rounded-[16px] sm:rounded-[35px] shrink-0" style={{ paddingBottom: '139.6825%' }}>
                               <div className="absolute inset-0">
-                                {flattenedImage ? (
+                                {!centeringEnabled ? (
+                                  /* Mobile, pre-activation: greyed preview of the card with an
+                                     opt-in button. Nothing is flattened until this is tapped. */
+                                  <div className="relative h-full w-full rounded-[16px] sm:rounded-[35px] overflow-hidden">
+                                    <img
+                                      src={image!}
+                                      alt=""
+                                      className="absolute inset-0 w-full h-full object-cover grayscale opacity-20"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-3 p-6">
+                                      <button
+                                        onClick={() => setCenteringActivated(true)}
+                                        className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#e6bbd4] text-black text-[10px] font-black uppercase tracking-widest active:scale-[0.98] transition-transform"
+                                      >
+                                        <Spline className="w-3.5 h-3.5" /> Activate Centering
+                                      </button>
+                                      <p className="text-[9px] text-white/50 uppercase tracking-widest text-center leading-relaxed">
+                                        Set your corners first
+                                      </p>
+                                    </div>
+                                  </div>
+                                ) : flattenedImage ? (
                                   <CenteringTool
                                     image={flattenedImage}
                                     originalImage={image!}
@@ -827,7 +863,7 @@ export default function App() {
               }}
               className="text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer"
             >
-              v6.7
+              v6.8
             </button>
           </div>
           <div className="flex justify-center items-center gap-6">

@@ -1,4 +1,4 @@
-// v4.27 - Card Flattener Curvature Support + Drag Optimization
+// v4.28 - Card Flattener: `enabled` gate so mobile can defer flattening until activated
 import React, { useRef, useEffect } from 'react';
 import { Point, CARD_RATIO, getPerspectiveInterpolation } from '../lib/utils';
 
@@ -8,12 +8,19 @@ interface CardFlattenerProps {
   onFlattened: (dataUrl: string) => void;
   filters?: { brightness: number; contrast: number; saturation: number; curvature: number; barrelCurvature: number };
   isDragging?: boolean;
+  /** When false, no flattening work happens at all (not even decoding the source
+   *  image). Used on mobile to defer this until the user activates centering —
+   *  the panel is off screen while corners are being set, and a full flatten is
+   *  a 2.2MP perspective warp plus a PNG encode. Defaults to enabled. */
+  enabled?: boolean;
 }
 
-export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, onFlattened, filters, isDragging }) => {
+export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, onFlattened, filters, isDragging, enabled = true }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
+    if (!enabled) return;
+
     let active = true;
     let timeoutId: ReturnType<typeof setTimeout>;
 
@@ -89,7 +96,7 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
       active = false;
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [image, corners, onFlattened, filters, isDragging]);
+  }, [image, corners, onFlattened, filters, isDragging, enabled]);
 
   return (
     <canvas 
