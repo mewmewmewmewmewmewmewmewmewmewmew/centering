@@ -1,4 +1,4 @@
-// v6.7 - Mobile drag perf: RAF-coalesced move events, settling zoom loop, no hover bookkeeping while dragging
+// v7.0 - Card outline stroke lands on the pixel containing the card edge (floor, not round)
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ZoomIn, ZoomOut } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -416,14 +416,19 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
           </svg>
 
           {/* CSS Card Outline — uses CSS left/right/top/bottom so it resolves percentages
-              via the same layout engine as the draggable lines, guaranteeing symmetry */}
+              via the same layout engine as the draggable lines, guaranteeing symmetry.
+              Inset uses floor(), not round(): box-sizing is border-box, so the 1px
+              border is painted just inside the inset, occupying the pixel column
+              [inset, inset+1). floor() is the column that actually contains the card
+              edge; round() lands a whole pixel past it whenever the fractional part
+              is >= 0.5, which reads as the outline sitting inside the card. */}
           <div
             className={cn("absolute pointer-events-none", !dragging && "transition-all duration-200")}
             style={{
-              left:   containerSize.width  > 0 ? `${Math.round(containerSize.width  * MARGIN)}px` : `${MARGIN * 100}%`,
-              right:  containerSize.width  > 0 ? `${Math.round(containerSize.width  * MARGIN)}px` : `${MARGIN * 100}%`,
-              top:    containerSize.height > 0 ? `${Math.round(containerSize.height * MY)}px`     : `${MY * 100}%`,
-              bottom: containerSize.height > 0 ? `${Math.round(containerSize.height * MY)}px`     : `${MY * 100}%`,
+              left:   containerSize.width  > 0 ? `${Math.floor(containerSize.width  * MARGIN)}px` : `${MARGIN * 100}%`,
+              right:  containerSize.width  > 0 ? `${Math.floor(containerSize.width  * MARGIN)}px` : `${MARGIN * 100}%`,
+              top:    containerSize.height > 0 ? `${Math.floor(containerSize.height * MY)}px`     : `${MY * 100}%`,
+              bottom: containerSize.height > 0 ? `${Math.floor(containerSize.height * MY)}px`     : `${MY * 100}%`,
               borderRadius: `${cardRadiusPx}px`,
               border: '1px solid #dc2626',
             }}

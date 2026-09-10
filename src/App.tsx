@@ -863,7 +863,7 @@ export default function App() {
               }}
               className="text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer"
             >
-              v6.9
+              v7.0
             </button>
           </div>
           <div className="flex justify-center items-center gap-6">
