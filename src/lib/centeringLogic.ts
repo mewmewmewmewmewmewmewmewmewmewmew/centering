@@ -52,22 +52,31 @@
  * Centering is also only a ceiling — corners, edges and surface can
  * pull the real grade below what these tables report.
  *
- * PSA:
- *   max ≤ 55  → 10        CGC (half steps):     BGS (centering subgrade):
- *   max ≤ 60  → 9           ≤ 55  → 10            ≤ 50.5 → Black Label (BL)
- *   max ≤ 65  → 8           ≤ 60  → 9.5           ≤ 55   → 9.5
- *   max ≤ 70  → 7           ≤ 65  → 9             ≤ 60   → 9
- *   else      → 6           ≤ 70  → 8.5           ≤ 65   → 8.5
- *                           ≤ 75  → 8             ≤ 70   → 8
- *                           else  → 6             ≤ 75   → 7.5
- *                                                 ≤ 80   → 7
- *                                                 else   → 6
+ * PSA and CGC (CGC's published tolerances track PSA's):
+ *   max ≤ 55  → 10
+ *   max ≤ 60  → 9
+ *   max ≤ 65  → 8
+ *   max ≤ 70  → 7
+ *   else      → 6
+ *
+ * For PSA and CGC the grade comes from whichever axis is worse.
+ *
+ * CGC also has a Pristine 10 (50/50) above Gem Mint 10, but — like a
+ * Black Label — it needs every attribute perfect, not just centering,
+ * so this file tops CGC out at 10 too.
+ *
+ * BGS is different and does NOT use this table — it weighs BOTH axes
+ * together (50/50 one way + 55/45 the other is a 9.5, but 55/45 both
+ * ways is only a 9). See BGS_CENTERING / computeBgsCentering().
+ *
+ * BGS also reports a centering SUBGRADE, topping out at 10. A "Black
+ * Label" is a separate thing: an overall Pristine 10 requiring all four
+ * subgrades (centering, corners, edges, surface) to be 10, so centering
+ * alone can never establish one. This file never returns 'BL'.
  *
  * KNOWN GAP: every ladder bottoms out at 6. Real scales keep going
  * (PSA 6 needs 80/20, 5 needs 85/15, 3–2 need 90/10), so badly centred
  * cards read higher here than they would grade.
- *
- * The displayed grade uses whichever axis (LR or TB) is worse.
  *
  * ─── HOW TO MODIFY ───────────────────────────────────────────────
  * • To adjust grading thresholds: edit the GRADE_THRESHOLDS tables.
@@ -141,29 +150,84 @@ const GRADE_THRESHOLDS: Record<GradingCompany, ThresholdRow[]> = {
     [70,   '7',   'text-orange-300'],
     [Infinity, '6', 'text-orange-500'],
   ],
-  // CGC grades in half steps, so it needs its own ladder rather than PSA's
-  // integer one — 60/40 is a CGC 9.5, not a 9.
+  // CGC's published centering tolerances track PSA's: Gem Mint 10 at 55/45,
+  // 9 at 60/40. CGC does award half grades, but it does not publish distinct
+  // centering tolerances for them, so inventing a half-step ladder here would
+  // be false precision. CGC additionally has a Pristine 10 (50/50) above Gem
+  // Mint 10 — but like a BGS Black Label that needs every attribute perfect,
+  // not just centering, so this table stops at 10.
   CGC: [
     [55,   '10',  'text-green-400'],
-    [60,   '9.5', 'text-lime-400'],
-    [65,   '9',   'text-lime-400'],
-    [70,   '8.5', 'text-yellow-300'],
-    [75,   '8',   'text-yellow-300'],
+    [60,   '9',   'text-lime-400'],
+    [65,   '8',   'text-yellow-300'],
+    [70,   '7',   'text-orange-300'],
     [Infinity, '6', 'text-orange-500'],
   ],
-  // BGS centering subgrade (front). 'BL' = centering good enough for a Black
-  // Label 10, which additionally needs the other three subgrades to be 10.
+  // BGS is NOT graded off a single worst-axis threshold — see BGS_CENTERING.
+  // This row set exists only so computeGrade() still answers for BGS when
+  // handed one axis; it assumes the card is that far off BOTH ways.
   BGS: [
-    [50.5, 'BL',  'text-green-400 font-black'],
-    [55,   '9.5', 'text-green-400'],
-    [60,   '9',   'text-lime-400'],
-    [65,   '8.5', 'text-lime-400'],
-    [70,   '8',   'text-yellow-300'],
-    [75,   '7.5', 'text-yellow-300'],
-    [80,   '7',   'text-orange-300'],
+    [50.5, '10',  'text-green-400'],
+    [55,   '9',   'text-lime-400'],
+    [60,   '7.5', 'text-yellow-300'],
+    [65,   '7',   'text-orange-300'],
     [Infinity, '6', 'text-orange-500'],
   ],
 };
+
+// ─── BGS centering subgrade (two-axis) ───────────────────────────────────────
+//
+// BGS does not grade centering off the worst axis alone: it looks at BOTH.
+// A card that is 50/50 one way and 55/45 the other is a 9.5, but one that is
+// 55/45 BOTH ways is only a 9 — same worst axis, different subgrade. So BGS
+// needs its own table keyed on (better axis, worse axis).
+//
+// Published front tiers:
+//   10   50/50 both ways
+//   9.5  50/50 one way, 55/45 the other
+//   9    55/45 both ways
+//
+// Beckett does not publish exact ratios below 9.5, so everything under 9 here
+// continues the same both-ways / one-way pattern and is an ESTIMATE. The 8.5
+// (60/40 one way, 50/50 the other) and 7.5 (60/40 both ways) steps come from
+// Beckett graders describing the scale rather than from a published table.
+//
+// Also note this is the CENTERING SUBGRADE, not an overall BGS grade. A
+// "Black Label" is an overall Pristine 10 that needs all four subgrades —
+// centering, corners, edges and surface — to be 10. Centering alone can
+// never establish it, so this table tops out at a centering 10.
+//
+// Each entry: [maxBetterAxis, maxWorseAxis, grade, tailwindColor]
+
+type BgsRow = [number, number, string, string];
+
+const BGS_CENTERING: BgsRow[] = [
+  [50.5, 50.5, '10',  'text-green-400'],
+  [50.5, 55,   '9.5', 'text-green-400'],
+  [55,   55,   '9',   'text-lime-400'],
+  [50.5, 60,   '8.5', 'text-lime-400'],
+  [55,   60,   '8',   'text-yellow-300'],
+  [60,   60,   '7.5', 'text-yellow-300'],
+  [65,   65,   '7',   'text-orange-300'],
+  [70,   70,   '6.5', 'text-orange-300'],
+  [Infinity, Infinity, '6', 'text-orange-500'],
+];
+
+/**
+ * BGS centering subgrade from both axes.
+ * Ratios are 0-100 per axis (50 = perfect); order does not matter.
+ */
+export function computeBgsCentering(lrRatio: number, tbRatio: number): GradeResult {
+  const a = 50 + Math.abs(50 - lrRatio); // worst-side % on each axis
+  const b = 50 + Math.abs(50 - tbRatio);
+  const better = Math.min(a, b);
+  const worse  = Math.max(a, b);
+
+  for (const [maxBetter, maxWorse, grade, color] of BGS_CENTERING) {
+    if (better <= maxBetter && worse <= maxWorse) return { grade, color };
+  }
+  return { grade: '-', color: '' };
+}
 
 // ─── Core functions ───────────────────────────────────────────────────────────
 
@@ -199,17 +263,20 @@ export function computeRatio(lines: GuideLines): { lrRatio: number; tbRatio: num
 export function computeCentering(lines: GuideLines): CenteringResult {
   const { lrRatio, tbRatio } = computeRatio(lines);
 
-  const companies: GradingCompany[] = ['PSA', 'BGS', 'CGC'];
   const grades = {} as Record<GradingCompany, GradeResult>;
 
-  for (const company of companies) {
+  // PSA and CGC publish a single tolerance that the worse axis has to meet,
+  // so the grade comes from whichever axis is further from 50.
+  for (const company of ['PSA', 'CGC'] as const) {
     const lrGrade = computeGrade(lrRatio, company);
     const tbGrade = computeGrade(tbRatio, company);
-    // Use whichever axis is further from 50 (worse centering)
     const lrWorst = Math.abs(50 - lrRatio);
     const tbWorst = Math.abs(50 - tbRatio);
     grades[company] = lrWorst >= tbWorst ? lrGrade : tbGrade;
   }
+
+  // BGS weighs both axes together, so it can't be reduced to one of them.
+  grades.BGS = computeBgsCentering(lrRatio, tbRatio);
 
   return { lrRatio, tbRatio, grades };
 }
