@@ -1,4 +1,4 @@
-// v7.0 - Card outline stroke lands on the pixel containing the card edge (floor, not round)
+// v7.1 - Guide lines render at their exact measured position (no whole-pixel snap on release)
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronUp, ChevronDown, ZoomIn, ZoomOut } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -477,7 +477,13 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                     // top/bottom get pixel-snapped by the renderer (whole unscaled
                     // pixels = a 4px visual grid under the drag zoom), but transforms
                     // composite at float precision, so motion stays sub-pixel smooth.
-                    // Snap to whole pixels once released, for symmetry.
+                    // Once released the line stays at its exact fractional
+                    // position rather than snapping to a whole pixel: the
+                    // ratio is computed from that exact value, so rounding
+                    // the render made the line jump up to half a pixel away
+                    // from the number it stands for. (It was never crisp
+                    // either — the 1px line is centred on this position, so a
+                    // whole-pixel value straddles two columns regardless.)
                     if (isDragging) {
                       const start = dragStartValueRef.current;
                       const deltaPx = isVertical ? W * (value - start) : H * (value - start);
@@ -491,10 +497,10 @@ export const CenteringTool: React.FC<CenteringToolProps> = ({
                       if (side === 'top')    return { ...drag, top:    `${H * start}px` };
                       return                       { ...drag, bottom: `${H * (1 - start)}px` };
                     }
-                    if (side === 'left')   return { ...base, left:   `${Math.round(W * value)}px` };
-                    if (side === 'right')  return { ...base, right:  `${Math.round(W * (1 - value))}px` };
-                    if (side === 'top')    return { ...base, top:    `${Math.round(H * value)}px` };
-                    return                       { ...base, bottom: `${Math.round(H * (1 - value))}px` };
+                    if (side === 'left')   return { ...base, left:   `${W * value}px` };
+                    if (side === 'right')  return { ...base, right:  `${W * (1 - value)}px` };
+                    if (side === 'top')    return { ...base, top:    `${H * value}px` };
+                    return                       { ...base, bottom: `${H * (1 - value)}px` };
                   }
                   if (side === 'left')   return { ...base, left:   `${value * 100}%` };
                   if (side === 'right')  return { ...base, right:  `${(1 - value) * 100}%` };

@@ -1,6 +1,7 @@
-// v4.28 - Card Flattener: `enabled` gate so mobile can defer flattening until activated
+// v4.29 - Output sized so the CARD inside the margin is a true 63:88 (1260x1740)
 import React, { useRef, useEffect } from 'react';
 import { Point, CARD_RATIO, getPerspectiveInterpolation } from '../lib/utils';
+import { FLATTENED_ASPECT } from '../lib/centeringLogic';
 
 interface CardFlattenerProps {
   image: string;
@@ -44,10 +45,12 @@ export const CardFlattener: React.FC<CardFlattenerProps> = ({ image, corners, on
       timeoutId = setTimeout(() => {
         if (!active) return;
         
-        // Use a high-resolution size that exactly matches 63:88 ratio
-        // 1260x1760 is 20x the base 63x88 units
-        const width = 1260; 
-        const height = 1760;
+        // High-resolution output sized so the CARD inside it is exactly 63:88.
+        // The canvas itself is taller than 63:88 because it carries an equal
+        // pixel margin on all four sides (see FLATTENED_ASPECT): 1260x1740,
+        // holding a 1209.6 x 1689.6 card with a 25.2px border.
+        const width = 1260;
+        const height = Math.round(width * FLATTENED_ASPECT);
         canvas.width = width;
         canvas.height = height;
 

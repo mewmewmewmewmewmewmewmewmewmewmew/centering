@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { Upload, Spline, RotateCcw, Instagram, Download, Sun, Contrast, Palette, Copy } from 'lucide-react';
+import { Upload, Spline, RotateCcw, RotateCw, Instagram, Download, Sun, Contrast, Palette, Copy } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useDropzone } from 'react-dropzone';
 import ReactGA from 'react-ga4';
@@ -7,7 +7,7 @@ import { CornerSelector } from './components/CornerSelector';
 import { CardFlattener } from './components/CardFlattener';
 import { CenteringTool } from './components/CenteringTool';
 import { Point, cn } from './lib/utils';
-import { computeCentering } from './lib/centeringLogic';
+import { computeCentering, MARGIN, MY, FLATTENED_ASPECT } from './lib/centeringLogic';
 
 type Step = 'upload' | 'analysis' | 'results';
 
@@ -136,16 +136,16 @@ export default function App() {
   const exportRef = useRef<HTMLDivElement>(null);
 
   const [lines, setLines] = useState(() => {
-    const mx = 0.02;
-    const my = (63 * 0.02) / 88;
-    const cardW = 1 - 2 * mx;
-    const cardH = 1 - 2 * my;
+    // MARGIN/MY come from centeringLogic so these defaults can never drift
+    // from the geometry the ratio is measured against.
+    const cardW = 1 - 2 * MARGIN;
+    const cardH = 1 - 2 * MY;
     const DEFAULT_OFFSET = 0.03;
     return {
-      left: mx + (cardW * DEFAULT_OFFSET),
-      right: (1 - mx) - (cardW * DEFAULT_OFFSET),
-      top: my + (cardH * DEFAULT_OFFSET),
-      bottom: (1 - my) - (cardH * DEFAULT_OFFSET)
+      left: MARGIN + (cardW * DEFAULT_OFFSET),
+      right: (1 - MARGIN) - (cardW * DEFAULT_OFFSET),
+      top: MY + (cardH * DEFAULT_OFFSET),
+      bottom: (1 - MY) - (cardH * DEFAULT_OFFSET)
     };
   });
 
@@ -411,8 +411,13 @@ export default function App() {
     multiple: false 
   } as any);
 
-  const handlePaste = useCallback((e: React.ClipboardEvent) => {
-    const items = e.clipboardData.items;
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    // Don't hijack a paste the user aimed at a real text field.
+    const t = e.target as HTMLElement | null;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
         const blob = items[i].getAsFile();
@@ -435,9 +440,63 @@ export default function App() {
     }
   }, []);
 
+  // Listen on the document, not on a wrapper div: a div isn't focusable, so a
+  // React onPaste there only fires once something inside it happens to hold
+  // focus. Bound here, paste works anywhere on the page.
+  useEffect(() => {
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [handlePaste]);
+
+  const [isRotating, setIsRotating] = useState(false);
+
+  /** Rotate the source photo 90° clockwise, carrying the corners with it. */
+  const handleRotate = useCallback(() => {
+    if (!image || isRotating) return;
+    setIsRotating(true);
+
+    const img = new Image();
+    if (image.startsWith('http')) img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.height;
+      canvas.height = img.width;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { setIsRotating(false); return; }
+
+      // 90° clockwise: (u,v) -> (height - v, u)
+      ctx.translate(canvas.width, 0);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, 0, 0);
+
+      setImage(canvas.toDataURL('image/png'));
+
+      // Keep the corners on the same physical points of the card. Each point
+      // moves (x,y) -> (1-y,x), and the array is re-ordered so index 0 is
+      // still the visually top-left handle: old BL becomes the new TL.
+      setCorners(prev => {
+        const t = (p: Point): Point => ({ x: 1 - p.y, y: p.x });
+        return [t(prev[3]), t(prev[0]), t(prev[1]), t(prev[2])];
+      });
+
+      // Undo history stores corners in the pre-rotation frame, and sequential
+      // picks are in old image coordinates — both are meaningless now.
+      setHistory([]);
+      setSeqPoints([]);
+      setSeqStep(0);
+      setSeqPhase('select_region');
+      setCurrentRegion(null);
+      setIsRotating(false);
+
+      ReactGA.event({ category: 'Action', action: 'Rotate', label: 'Card Image' });
+    };
+    img.onerror = () => setIsRotating(false);
+    img.src = image;
+  }, [image, isRotating]);
+
 
   return (
-    <div className="min-h-screen bg-[#101010] text-white font-sans flex flex-col" onPaste={handlePaste}>
+    <div className="min-h-screen bg-[#101010] text-white font-sans flex flex-col">
       {MAINTENANCE_BANNER && (
         <div className="w-full bg-red-600 text-white text-center text-xs font-bold py-2 px-4 tracking-wide">
           Upgrading site, results may not be accurate during maintenance.
@@ -595,8 +654,21 @@ export default function App() {
                           </AnimatePresence>
                         </div>
 
-                        <div className="mt-2 flex justify-end">
-                          <button 
+                        <div className="mt-2 flex justify-between items-center">
+                          <button
+                            onClick={handleRotate}
+                            disabled={isRotating}
+                            title="Rotate 90°"
+                            aria-label="Rotate image 90 degrees clockwise"
+                            className={cn(
+                              "flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest transition-all text-[#e6bbd4]",
+                              isRotating ? "opacity-40 cursor-wait" : "hover:opacity-70 active:scale-[0.97]"
+                            )}
+                          >
+                            <RotateCw className="w-3.5 h-3.5" />
+                            <span className="hidden md:inline">ROTATE</span>
+                          </button>
+                          <button
                             onClick={() => setSelectionMode(selectionMode === 'sequential' ? 'drag' : 'sequential')}
                             className={cn(
                               "hidden md:block text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-70 text-[#e6bbd4]",
@@ -668,7 +740,7 @@ export default function App() {
                       <div className="flex flex-col min-h-0">
                         <div className="flex flex-col min-h-0">
                           <div ref={exportRef} className="p-2 pb-4 rounded-[24px] sm:rounded-[43px] flex flex-col gap-3 gloss-box relative overflow-visible">
-                            <div className="w-full relative rounded-[16px] sm:rounded-[35px] shrink-0" style={{ paddingBottom: '139.6825%' }}>
+                            <div className="w-full relative rounded-[16px] sm:rounded-[35px] shrink-0" style={{ paddingBottom: `${FLATTENED_ASPECT * 100}%` }}>
                               <div className="absolute inset-0">
                                 {!centeringEnabled ? (
                                   /* Mobile, pre-activation: greyed preview of the card with an
@@ -863,7 +935,7 @@ export default function App() {
               }}
               className="text-[8px] font-mono text-white/20 uppercase tracking-widest hover:text-white/40 transition-colors cursor-pointer"
             >
-              v7.0
+              v7.1
             </button>
           </div>
           <div className="flex justify-center items-center gap-6">
